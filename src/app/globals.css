@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+/* 外部フォントは使わない（オフライン運用）。システムフォントのみ */
+@theme {
+  --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+  --color-anko: #c0392b;
+  --color-custard: #f1c40f;
+  --color-matcha: #2e8b57;
+  --color-choco: #6d4c41;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #fffaf0;
+  color: #1f1f1f;
+  font-family: var(--font-sans);
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
