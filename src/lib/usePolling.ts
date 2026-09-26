@@ -11,6 +11,8 @@ export const POLL_INTERVAL_MS = 2000;
 export function usePolling<T>(url: string, intervalMs = POLL_INTERVAL_MS) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState(false);
+  /** サーバー時刻 − 端末時刻（ms）。経過時間を端末の時計のずれに左右されずに出すため */
+  const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const inFlight = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
@@ -25,6 +27,8 @@ export function usePolling<T>(url: string, intervalMs = POLL_INTERVAL_MS) {
       if (inFlight.current === controller) {
         setData(json);
         setError(false);
+        const serverDate = Date.parse(res.headers.get("date") ?? "");
+        if (!Number.isNaN(serverDate)) setClockOffsetMs(serverDate - Date.now());
       }
     } catch {
       // 新しいリクエストに置き換えられて中断された場合はエラー扱いにしない
@@ -49,5 +53,5 @@ export function usePolling<T>(url: string, intervalMs = POLL_INTERVAL_MS) {
     };
   }, [refresh, intervalMs]);
 
-  return { data, error, refresh };
+  return { data, error, refresh, clockOffsetMs };
 }
