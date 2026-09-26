@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "およげない！たいやきくん",
+  title: { default: "およげない！たいやきくん", template: "%s｜およげない！たいやきくん" },
   description: "寮祭たい焼き屋台の注文管理",
 };
 

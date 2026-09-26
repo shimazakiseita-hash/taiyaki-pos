@@ -1,5 +1,6 @@
 "use client";
 
+import { AppHeader } from "@/components/AppHeader";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
@@ -91,6 +92,7 @@ export function RegisterScreen() {
 
   return (
     <>
+      <AppHeader title="レジ" error={summary.status === null ? null : summary.error || orders.error} />
       <ConnectionBanner error={summary.error || orders.error} />
       <main className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[3fr_2fr]">
         <section className="flex flex-col gap-4">

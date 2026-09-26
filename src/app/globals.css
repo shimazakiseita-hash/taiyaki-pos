@@ -1,13 +1,36 @@
 @import "tailwindcss";
 
-/* 外部フォントは使わない（オフライン運用）。システムフォントのみ */
-@theme {
-  --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-    "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
-  --color-anko: #c0392b;
-  --color-custard: #f1c40f;
-  --color-matcha: #2e8b57;
-  --color-choco: #6d4c41;
+/* ── デザイントークン（docs/design.md 2章） ───────────────── */
+:root {
+  --navy: #1b2a4a;
+  --navy-light: #2e4a7a;
+  --paper: #faf6ee;
+  --ink: #1a1a1a;
+  --red: #c8322b;
+  --anko: #9e3232;
+  --custard: #e3ae2f;
+  --matcha: #5a8a3a;
+  --choco: #6b4226;
+  --ok: #2f7d4f;
+  --warn: #d9822b;
+}
+
+/* Tailwind から bg-navy / text-red / border-warn などで参照する */
+@theme inline {
+  /* 外部フォントは使わない（オフライン運用）。システムの太いゴシック */
+  --font-sans: "Noto Sans JP", "Noto Sans CJK JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+  --color-navy: var(--navy);
+  --color-navy-light: var(--navy-light);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-red: var(--red);
+  --color-anko: var(--anko);
+  --color-custard: var(--custard);
+  --color-matcha: var(--matcha);
+  --color-choco: var(--choco);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
 }
 
 html {
@@ -15,9 +38,10 @@ html {
 }
 
 body {
-  background: #fffaf0;
-  color: #1f1f1f;
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 button {
@@ -27,4 +51,135 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+}
+
+/* ── 青海波（画像を使わず radial-gradient の重ねで描く） ─────────
+   --sg-bg が地の色、--sg-line が波の線。既定は紺地に少し明るい紺で控えめに */
+.bg-seigaiha {
+  --sg-bg: var(--navy);
+  --sg-line: color-mix(in srgb, var(--navy-light) 70%, var(--navy));
+  --sg-size: 96px;
+  background-color: var(--sg-bg);
+  background-image:
+    radial-gradient(circle at 100% 150%, var(--sg-bg) 24%, var(--sg-line) 24% 28%, var(--sg-bg) 28% 36%, var(--sg-line) 36% 40%, transparent 40%),
+    radial-gradient(circle at 0 150%, var(--sg-bg) 24%, var(--sg-line) 24% 28%, var(--sg-bg) 28% 36%, var(--sg-line) 36% 40%, transparent 40%),
+    radial-gradient(circle at 50% 100%, var(--sg-line) 10%, var(--sg-bg) 10% 23%, var(--sg-line) 23% 30%, var(--sg-bg) 30% 43%, var(--sg-line) 43% 50%, var(--sg-bg) 50% 63%, var(--sg-line) 63% 71%, transparent 71%),
+    radial-gradient(circle at 100% 50%, var(--sg-line) 5%, var(--sg-bg) 5% 15%, var(--sg-line) 15% 20%, var(--sg-bg) 20% 29%, var(--sg-line) 29% 34%, var(--sg-bg) 34% 44%, var(--sg-line) 44% 49%, transparent 49%),
+    radial-gradient(circle at 0 50%, var(--sg-line) 5%, var(--sg-bg) 5% 15%, var(--sg-line) 15% 20%, var(--sg-bg) 20% 29%, var(--sg-line) 29% 34%, var(--sg-bg) 34% 44%, var(--sg-line) 44% 49%, transparent 49%);
+  background-size: var(--sg-size) calc(var(--sg-size) / 2);
+}
+
+/* ── 呼び出し表示 /display ─────────────────────────── */
+
+/* 浮き輪：赤白のしま模様の輪の中に白い円、赤い番号 */
+.ukiwa {
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  padding: 11%;
+  background: repeating-conic-gradient(from -15deg, var(--red) 0 30deg, #fff 30deg 60deg);
+  box-shadow:
+    0 0.4rem 0 rgb(0 0 0 / 0.25),
+    inset 0 0 0 2px rgb(0 0 0 / 0.15);
+}
+
+.ukiwa-inner {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: inset 0 0.25rem 0.5rem rgb(0 0 0 / 0.18);
+  color: var(--red);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+/* 桁数に応じて円に収まる大きさにする（コンテナ幅基準） */
+.ukiwa-inner[data-digits="1"],
+.ukiwa-inner[data-digits="2"] {
+  font-size: 44cqw;
+}
+.ukiwa-inner[data-digits="3"] {
+  font-size: 32cqw;
+}
+.ukiwa-inner[data-digits="4"] {
+  font-size: 24cqw;
+}
+
+/* 新しく完成した番号：ぷかぷか揺れる */
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-9%) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(3%) rotate(4deg);
+  }
+}
+
+.ukiwa-new {
+  animation: bob 1.6s ease-in-out infinite;
+  box-shadow:
+    0 0 0 0.35rem rgb(255 255 255 / 0.9),
+    0 0 2.5rem 0.5rem rgb(255 255 255 / 0.45);
+}
+
+/* 水しぶき：輪のまわりに飛び散るしずく */
+@keyframes splash {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(0) scale(0.4);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--a)) translateY(-72cqw) scale(1);
+    opacity: 0;
+  }
+}
+
+.splash-drop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 11cqw;
+  height: 15cqw;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 35%, #fff 0 20%, #9fd3ff 21% 100%);
+  pointer-events: none;
+  animation: splash 1.4s ease-out infinite;
+  animation-delay: var(--d);
+}
+
+/* キャラクターがゆらゆら漂う（注文がない時間） */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-6%) rotate(3deg);
+  }
+}
+
+.drift {
+  animation: drift 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ukiwa-new,
+  .drift {
+    animation: none;
+  }
+  .splash-drop {
+    display: none;
+  }
 }

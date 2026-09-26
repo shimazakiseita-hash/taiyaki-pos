@@ -1,5 +1,6 @@
 "use client";
 
+import { AppHeader } from "@/components/AppHeader";
 import { useState } from "react";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { ItemBadges } from "@/components/ItemBadges";
@@ -46,6 +47,7 @@ export function KitchenScreen() {
 
   return (
     <>
+      <AppHeader title="キッチン" error={orders.status} />
       <ConnectionBanner error={orders.error} />
       <header className="grid grid-cols-5 gap-3 border-b-2 border-amber-800 bg-white p-3">
         {FLAVORS.map((f) => (

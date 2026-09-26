@@ -1,5 +1,6 @@
 "use client";
 
+import { AppHeader } from "@/components/AppHeader";
 import { useState } from "react";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { Toast, useToast } from "@/components/Toast";
@@ -73,10 +74,9 @@ export function AdminScreen() {
 
   return (
     <>
+      <AppHeader title="管理" error={summary.status} />
       <ConnectionBanner error={summary.error} />
       <main className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">
-        <h1 className="text-2xl font-black">管理</h1>
-
         <Card title="売上">
           <p className="text-5xl font-black tabular-nums">{s ? `${s.revenue.toLocaleString()}円` : "…"}</p>
           <p className="mt-1 text-3xl font-bold text-amber-800 tabular-nums">金券 {s?.tickets ?? "…"}枚</p>

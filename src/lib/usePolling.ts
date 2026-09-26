@@ -53,5 +53,7 @@ export function usePolling<T>(url: string, intervalMs = POLL_INTERVAL_MS) {
     };
   }, [refresh, intervalMs]);
 
-  return { data, error, refresh, clockOffsetMs };
+  /** 接続状態。まだ一度も応答がない間は null */
+  const status: boolean | null = data === null && !error ? null : error;
+  return { data, error, status, refresh, clockOffsetMs };
 }
