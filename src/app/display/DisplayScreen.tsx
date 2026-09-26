@@ -62,16 +62,14 @@ export function DisplayScreen() {
     <div className="bg-seigaiha flex min-h-dvh flex-1 flex-col text-white">
       <ConnectionBanner error={orders.error} />
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 p-4 md:p-6">
-        <div className="mx-auto w-full max-w-[min(100%,34rem)] xl:max-w-[42rem] rounded-[2rem] bg-white p-2 shadow-[0_0.5rem_0_rgb(0_0_0/0.3)]">
-          <Image
-            src="/brand/logo.png"
-            alt="およげない！たいやきくん"
-            width={900}
-            height={525}
-            priority
-            className="h-auto w-full rounded-[1.6rem]"
-          />
-        </div>
+        <Image
+          src="/brand/logo.png"
+          alt="およげない！たいやきくん"
+          width={752}
+          height={799}
+          priority
+          className="mx-auto h-auto w-[min(62vw,18rem)] drop-shadow-[0_0.5rem_0_rgb(0_0_0/0.35)] md:w-[20rem] xl:w-[22rem]"
+        />
 
         <section aria-labelledby="ready-heading" className="flex flex-1 flex-col">
           <h1
