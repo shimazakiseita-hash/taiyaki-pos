@@ -28,11 +28,16 @@ function addItems(counts: FlavorCounts, items: readonly OrderItem[]): void {
   for (const item of items) counts[item.flavor] += item.qty;
 }
 
+/** 注文群の味別個数 */
+export function countByFlavor(orders: readonly Order[]): FlavorCounts {
+  const counts = emptyCounts();
+  for (const o of orders) addItems(counts, o.items);
+  return counts;
+}
+
 /** 味別の販売数（cancelled 以外） */
 export function soldByFlavor(orders: readonly Order[]): FlavorCounts {
-  const counts = emptyCounts();
-  for (const o of orders) if (o.status !== "cancelled") addItems(counts, o.items);
-  return counts;
+  return countByFlavor(orders.filter((o) => o.status !== "cancelled"));
 }
 
 export function computeSummary(orders: readonly Order[], settings: Settings): Summary {
