@@ -9,7 +9,7 @@ node -v
 sudo apt update && sudo apt install -y build-essential python3
 
 # このフォルダをホーム以下に置く
-cd ~/taiyaki-pos
+cd ~/dev/taiyaki-pos
 code .          # VS Code で開く
 claude          # Claude Code を起動
 ```

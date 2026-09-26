@@ -17,13 +17,14 @@
 - [ ] レジPC・キッチンPCの電源を確保（延長コード）
 - [ ] 各端末でURLをブックマークしておく
 - [ ] 本番ビルドしておく：`npm run build`
-- [ ] DBを初期化：`npm run db:reset`（テストデータを消す）
+- [ ] 動作確認：`npm run start` のまま別ターミナルで `npm run load-test -- 100`（100件注文して応答時間と番号の重複を表示）
+- [ ] DBを初期化：`npm run db:reset`（テストデータを消す。サーバーは止めてから実行し、あとで起動し直す）
 - [ ] 予備の紙：番号札、注文メモ用紙、ペン
 
 ## 当日の開店手順
 1. テザリング役のスマホでテザリングをON
 2. レジPC・キッチンPC・スタッフのスマホをテザリングに接続
-3. レジPCでターミナルを開き、`cd ~/taiyaki-pos && npm run start`
+3. レジPCでターミナルを開き、`cd ~/dev/taiyaki-pos && npm run start`
 4. 管理画面 `/admin` に表示されるURLを確認し、各端末で開く
    - レジPC → `/register`
    - キッチンPC → `/kitchen`
