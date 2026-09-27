@@ -127,9 +127,7 @@ export function RegisterScreen() {
                   >
                     <span className="text-4xl font-black">{f.name}</span>
                     <span className="flex items-end justify-between gap-2">
-                      <span className="text-xl font-bold">
-                        {soldOut ? "売り切れ" : left === null ? "…" : `残り ${Math.max(0, left)}`}
-                      </span>
+                      <span className="text-xl font-bold">{soldOut && "売り切れ"}</span>
                       <span
                         key={cart[f.id]}
                         className={`text-7xl leading-none font-black tabular-nums ${cart[f.id] > 0 ? "pop" : "opacity-40"}`}
