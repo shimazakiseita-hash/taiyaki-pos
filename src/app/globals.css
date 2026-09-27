@@ -174,12 +174,70 @@ button:disabled {
   animation: drift 4s ease-in-out infinite;
 }
 
+/* ── レジ /register ─────────────────────────────── */
+
+/* 味ボタン：押したら一瞬縮む */
+.press {
+  transition: transform 80ms ease-out;
+}
+.press:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+/* 個数が増えたときに数字が弾む（key を変えて付け直すと再生される） */
+@keyframes pop {
+  0% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.pop {
+  animation: pop 180ms ease-out;
+}
+
+/* 番号発行画面：赤い円に白抜きの巨大な番号（文字の大きさは円の幅を基準にする） */
+.issued-circle {
+  container-type: inline-size;
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: var(--red);
+  box-shadow:
+    0 0 0 0.6rem #fff,
+    0 0.9rem 0 0.6rem rgb(0 0 0 / 0.3);
+}
+.issued-number {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.issued-number[data-digits="1"],
+.issued-number[data-digits="2"] {
+  font-size: 58cqw;
+}
+.issued-number[data-digits="3"] {
+  font-size: 42cqw;
+}
+.issued-number[data-digits="4"] {
+  font-size: 32cqw;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ukiwa-new,
-  .drift {
+  .drift,
+  .pop {
     animation: none;
   }
   .splash-drop {
     display: none;
+  }
+  .press {
+    transition: none;
   }
 }
