@@ -11,14 +11,13 @@ import { sendJson, setOrderStatus } from "@/lib/client";
 import { FLAVORS, emptyCounts, type FlavorCounts } from "@/lib/menu";
 import { MAX_ORDER_QTY, calcAmount, calcTickets } from "@/lib/pricing";
 import { STATUS_LABELS } from "@/lib/status";
-import { sum, type Summary } from "@/lib/summary";
+import { sum } from "@/lib/summary";
 import type { CreatedOrder, Order } from "@/lib/types";
 import { usePolling } from "@/lib/usePolling";
 
 const RECENT_COUNT = 5;
 
 export function RegisterScreen() {
-  const summary = usePolling<Summary>("/api/summary");
   const orders = usePolling<Order[]>("/api/orders");
   const toast = useToast();
 
@@ -31,7 +30,6 @@ export function RegisterScreen() {
   const totalQty = sum(cart);
   const amount = calcAmount(totalQty);
   const tickets = calcTickets(amount);
-  const remaining = summary.data?.remainingByFlavor;
 
   const add = (id: keyof FlavorCounts) => setCart((c) => ({ ...c, [id]: c[id] + 1 }));
   const sub = (id: keyof FlavorCounts) => setCart((c) => ({ ...c, [id]: Math.max(0, c[id] - 1) }));
@@ -48,7 +46,6 @@ export function RegisterScreen() {
     } else {
       toast.show(res.error);
     }
-    summary.refresh();
     orders.refresh();
   }
 
@@ -65,7 +62,6 @@ export function RegisterScreen() {
     setCancelTarget(null);
     if (!res.ok) toast.show(res.error);
     else toast.show(`${cancelTarget.number}番を取り消しました`);
-    summary.refresh();
     orders.refresh();
   }
 
@@ -107,15 +103,13 @@ export function RegisterScreen() {
 
   return (
     <>
-      <AppHeader title="レジ" error={summary.status === null ? null : summary.error || orders.error} />
-      <ConnectionBanner error={summary.error || orders.error} />
+      <AppHeader title="レジ" error={orders.status} />
+      <ConnectionBanner error={orders.error} />
       <main className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[3fr_2fr]">
         <section className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             {FLAVORS.map((f) => {
-              const left = remaining ? remaining[f.id] - cart[f.id] : null;
-              const soldOut = remaining ? remaining[f.id] <= 0 : false;
-              const canAdd = left !== null && left > 0 && totalQty < MAX_ORDER_QTY;
+              const canAdd = totalQty < MAX_ORDER_QTY;
               return (
                 <div key={f.id} className="flex flex-col gap-2">
                   <button
@@ -126,8 +120,7 @@ export function RegisterScreen() {
                     className={`press flex min-h-44 flex-col justify-between rounded-3xl p-4 text-left shadow-[0_0.3rem_0_rgb(0_0_0/0.2)] disabled:opacity-40 ${f.bg} ${f.fg}`}
                   >
                     <span className="text-4xl font-black">{f.name}</span>
-                    <span className="flex items-end justify-between gap-2">
-                      <span className="text-xl font-bold">{soldOut && "売り切れ"}</span>
+                    <span className="flex items-end justify-end">
                       <span
                         key={cart[f.id]}
                         className={`text-7xl leading-none font-black tabular-nums ${cart[f.id] > 0 ? "pop" : "opacity-40"}`}

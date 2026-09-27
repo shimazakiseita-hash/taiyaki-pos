@@ -23,18 +23,6 @@ export const updateStatusSchema = z.object({
 
 export const statusListSchema = z.array(z.enum(ORDER_STATUSES));
 
-const capacityValue = z.number().int().min(0).max(9999);
-
-export const putSettingsSchema = z
-  .object({
-    capacity: z
-      .object({
-        anko: capacityValue.optional(),
-        custard: capacityValue.optional(),
-        matcha: capacityValue.optional(),
-        choco: capacityValue.optional(),
-      })
-      .optional(),
-    targetQty: z.number().int().min(1).max(99999).optional(),
-  })
-  .refine((v) => v.capacity !== undefined || v.targetQty !== undefined, "変更する項目がありません");
+export const putSettingsSchema = z.object({
+  targetQty: z.number().int().min(1).max(99999),
+});

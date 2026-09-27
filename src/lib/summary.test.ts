@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CAPACITY } from "./menu";
-import { averageWaitSeconds, computeSummary, findOverCapacity } from "./summary";
+import { averageWaitSeconds, computeSummary } from "./summary";
 import type { Order, OrderItem } from "./types";
 import type { OrderStatus } from "./status";
 import { calcAmount } from "./pricing";
@@ -24,7 +23,7 @@ function order(status: OrderStatus, items: OrderItem[], opts: Partial<Order> = {
   };
 }
 
-const settings = { capacity: { ...DEFAULT_CAPACITY }, targetQty: 300 };
+const settings = { targetQty: 300 };
 
 describe("computeSummary", () => {
   const orders = [
@@ -48,15 +47,6 @@ describe("computeSummary", () => {
     expect(s.toBakeTotal).toBe(4);
     expect(s.waitingCount).toBe(2);
     expect(s.readyCount).toBe(1);
-  });
-
-  it("残り販売可能数 = 上限 − 販売数（cancelled 分は戻る）", () => {
-    expect(s.remainingByFlavor).toEqual({ anko: 143, custard: 49, matcha: 49, choco: 50 });
-  });
-
-  it("上限を販売数より下げると負になる", () => {
-    const low = computeSummary(orders, { ...settings, capacity: { ...DEFAULT_CAPACITY, anko: 5 } });
-    expect(low.remainingByFlavor.anko).toBe(-2);
   });
 });
 
@@ -88,24 +78,5 @@ describe("averageWaitSeconds", () => {
     }
     orders.push(order("ready", [{ flavor: "anko", qty: 1 }]));
     expect(averageWaitSeconds(orders)).toBe(330);
-  });
-});
-
-describe("findOverCapacity", () => {
-  const sold = { anko: 148, custard: 50, matcha: 0, choco: 0 };
-  it("上限内なら空", () => {
-    expect(findOverCapacity(sold, DEFAULT_CAPACITY, [{ flavor: "anko", qty: 2 }])).toEqual([]);
-  });
-  it("超える味と残数を返す", () => {
-    expect(
-      findOverCapacity(sold, DEFAULT_CAPACITY, [
-        { flavor: "anko", qty: 3 },
-        { flavor: "custard", qty: 1 },
-        { flavor: "matcha", qty: 1 },
-      ]),
-    ).toEqual([
-      { flavor: "anko", remaining: 2 },
-      { flavor: "custard", remaining: 0 },
-    ]);
   });
 });

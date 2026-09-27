@@ -30,5 +30,4 @@ export function emptyCounts(): FlavorCounts {
   return { anko: 0, custard: 0, matcha: 0, choco: 0 };
 }
 
-export const DEFAULT_CAPACITY: FlavorCounts = { anko: 150, custard: 50, matcha: 50, choco: 50 };
 export const DEFAULT_TARGET_QTY = 300;

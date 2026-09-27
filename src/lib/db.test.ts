@@ -51,19 +51,9 @@ describe("createOrder", () => {
     expectDomainError(() => createOrder(db, [{ flavor: "anko", qty: 21 }]), "INVALID_INPUT");
   });
 
-  it("仕込み上限を超えると OVER_CAPACITY で、番号を消費しない", () => {
-    putSettings(db, { capacity: { matcha: 3 } });
-    createOrder(db, [{ flavor: "matcha", qty: 2 }]);
-    expectDomainError(() => createOrder(db, [{ flavor: "matcha", qty: 2 }]), "OVER_CAPACITY");
-    expect(createOrder(db, [{ flavor: "matcha", qty: 1 }]).number).toBe(2);
-    expectDomainError(() => createOrder(db, [{ flavor: "matcha", qty: 1 }]), "OVER_CAPACITY");
-  });
-
-  it("取り消した分は再び販売できる", () => {
-    putSettings(db, { capacity: { choco: 2 } });
-    const r = createOrder(db, [{ flavor: "choco", qty: 2 }]);
-    updateStatus(db, r.id, "cancelled");
-    expect(createOrder(db, [{ flavor: "choco", qty: 2 }]).number).toBe(2);
+  it("味ごとの販売数に上限はない", () => {
+    for (let i = 0; i < 20; i++) createOrder(db, [{ flavor: "matcha", qty: 20 }]);
+    expect(listOrders(db).reduce((acc, o) => acc + o.totalQty, 0)).toBe(400);
   });
 });
 
@@ -104,9 +94,8 @@ describe("listOrders", () => {
 });
 
 describe("settings", () => {
-  it("初期値と部分更新", () => {
-    expect(getSettings(db)).toEqual({ capacity: { anko: 150, custard: 50, matcha: 50, choco: 50 }, targetQty: 300 });
-    const s = putSettings(db, { capacity: { anko: 120 }, targetQty: 280 });
-    expect(s).toEqual({ capacity: { anko: 120, custard: 50, matcha: 50, choco: 50 }, targetQty: 280 });
+  it("目標の初期値と更新", () => {
+    expect(getSettings(db)).toEqual({ targetQty: 300 });
+    expect(putSettings(db, { targetQty: 280 })).toEqual({ targetQty: 280 });
   });
 });

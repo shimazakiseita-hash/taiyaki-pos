@@ -2,11 +2,10 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { DomainError } from "./errors";
-import { DEFAULT_CAPACITY, DEFAULT_TARGET_QTY, FLAVOR_BY_ID, FLAVOR_IDS, emptyCounts, type FlavorCounts, type FlavorId } from "./menu";
+import { DEFAULT_TARGET_QTY, FLAVOR_IDS, type FlavorId } from "./menu";
 import { normalizeItems } from "./order";
 import { calcAmount, calcTickets } from "./pricing";
 import { STATUS_LABELS, canTransition, type OrderStatus } from "./status";
-import { findOverCapacity } from "./summary";
 import type { CreatedOrder, Order, OrderItem, Settings } from "./types";
 
 export type DB = Database.Database;
@@ -46,11 +45,10 @@ export function openDb(file: string = DEFAULT_DB_PATH): DB {
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
-  const insert = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
-  db.transaction(() => {
-    insert.run("capacity", JSON.stringify(DEFAULT_CAPACITY));
-    insert.run("target_qty", JSON.stringify(DEFAULT_TARGET_QTY));
-  })();
+  db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)").run(
+    "target_qty",
+    JSON.stringify(DEFAULT_TARGET_QTY),
+  );
   return db;
 }
 
@@ -89,30 +87,11 @@ function toOrder(row: OrderRow, items: OrderItem[]): Order {
   };
 }
 
-function soldByFlavorSql(db: DB): FlavorCounts {
-  const rows = db
-    .prepare(
-      `SELECT oi.flavor AS flavor, SUM(oi.qty) AS qty
-         FROM order_items oi JOIN orders o ON o.id = oi.order_id
-        WHERE o.status != 'cancelled'
-        GROUP BY oi.flavor`,
-    )
-    .all() as { flavor: FlavorId; qty: number }[];
-  const counts = emptyCounts();
-  for (const r of rows) counts[r.flavor] = r.qty;
-  return counts;
-}
-
 export function createOrder(db: DB, rawItems: readonly OrderItem[], now: Date = new Date()): CreatedOrder {
   const { items, totalQty } = normalizeItems(rawItems);
   const amount = calcAmount(totalQty);
 
   const tx = db.transaction((): CreatedOrder => {
-    const over = findOverCapacity(soldByFlavorSql(db), getSettings(db).capacity, items);
-    if (over.length > 0) {
-      const detail = over.map((o) => `${FLAVOR_BY_ID[o.flavor].name}（残り${o.remaining}個）`).join("、");
-      throw new DomainError("OVER_CAPACITY", `仕込み上限を超えます：${detail}`);
-    }
     const { next } = db.prepare("SELECT COALESCE(MAX(number), 0) + 1 AS next FROM orders").get() as { next: number };
     const result = db
       .prepare("INSERT INTO orders (number, status, total_qty, amount, created_at) VALUES (?, 'waiting', ?, ?, ?)")
@@ -185,18 +164,15 @@ export function getSettings(db: DB): Settings {
   const rows = db.prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
   const map = new Map(rows.map((r) => [r.key, JSON.parse(r.value) as unknown]));
   return {
-    capacity: { ...DEFAULT_CAPACITY, ...(map.get("capacity") as Partial<FlavorCounts> | undefined) },
     targetQty: (map.get("target_qty") as number | undefined) ?? DEFAULT_TARGET_QTY,
   };
 }
 
-export function putSettings(db: DB, patch: { capacity?: Partial<FlavorCounts>; targetQty?: number }): Settings {
+export function putSettings(db: DB, patch: { targetQty?: number }): Settings {
   const upsert = db.prepare(
     "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   );
   db.transaction(() => {
-    const current = getSettings(db);
-    if (patch.capacity) upsert.run("capacity", JSON.stringify({ ...current.capacity, ...patch.capacity }));
     if (patch.targetQty !== undefined) upsert.run("target_qty", JSON.stringify(patch.targetQty));
   })();
   return getSettings(db);

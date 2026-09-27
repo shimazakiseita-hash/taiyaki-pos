@@ -1,4 +1,4 @@
-import type { FlavorCounts, FlavorId } from "./menu";
+import type { FlavorId } from "./menu";
 import type { OrderStatus } from "./status";
 
 export type OrderItem = { flavor: FlavorId; qty: number };
@@ -17,7 +17,6 @@ export type Order = {
 };
 
 export type Settings = {
-  capacity: FlavorCounts;
   targetQty: number;
 };
 
