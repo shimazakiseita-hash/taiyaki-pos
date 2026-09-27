@@ -49,55 +49,65 @@ export function KitchenScreen() {
     <>
       <AppHeader title="キッチン" error={orders.status} />
       <ConnectionBanner error={orders.error} />
-      <header className="grid grid-cols-5 gap-3 border-b-2 border-amber-800 bg-white p-3">
+      <section aria-label="焼くべき数" className="grid grid-cols-5 gap-3 p-3 pb-0">
         {FLAVORS.map((f) => (
-          <div key={f.id} className={`rounded-2xl p-3 text-center ${f.bg} ${f.fg}`}>
-            <div className="text-xl font-bold">{f.name}</div>
-            <div className="text-6xl leading-tight font-black tabular-nums">{toBake[f.id]}</div>
+          <div
+            key={f.id}
+            className={`rounded-2xl px-3 py-2 text-center shadow-[0_0.25rem_0_rgb(0_0_0/0.2)] ${f.bg} ${f.fg}`}
+          >
+            <div className="text-2xl font-black">{f.name}</div>
+            <div className={`text-7xl leading-tight font-black tabular-nums ${toBake[f.id] === 0 ? "opacity-40" : ""}`}>
+              {toBake[f.id]}
+            </div>
           </div>
         ))}
-        <div className="rounded-2xl bg-gray-900 p-3 text-center text-white">
-          <div className="text-xl font-bold">焼くべき数 合計</div>
-          <div className="text-6xl leading-tight font-black tabular-nums">{sum(toBake)}</div>
+        <div className="rounded-2xl bg-navy px-3 py-2 text-center text-white shadow-[0_0.25rem_0_rgb(0_0_0/0.2)]">
+          <div className="text-2xl font-black">焼くべき数</div>
+          <div className="text-7xl leading-tight font-black tabular-nums">{sum(toBake)}</div>
         </div>
-      </header>
+      </section>
 
-      <main className="grid flex-1 grid-cols-[2fr_1fr] gap-4 p-4">
+      <main className="grid flex-1 grid-cols-[2fr_1fr] gap-4 p-3">
         <section>
-          <h2 className="mb-3 text-2xl font-bold">
+          <h2 className="mb-3 text-2xl font-black text-navy">
             焼き待ち <span className="tabular-nums">{waiting.length}</span>件
             <span className="ml-3 text-base font-normal text-gray-600">古い順</span>
           </h2>
           {waiting.length === 0 ? (
-            <p className="rounded-2xl bg-white p-8 text-center text-2xl text-gray-400">焼き待ちの注文はありません</p>
+            <p className="rounded-2xl bg-white p-8 text-center text-2xl text-gray-500">焼き待ちの注文はありません</p>
           ) : (
             <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
               {waiting.map((o) => {
                 const elapsed = now - Date.parse(o.createdAt);
                 const late = elapsed >= LATE_MS;
                 return (
-                  <li
-                    key={o.id}
-                    className={`flex flex-col gap-3 rounded-3xl border-4 p-4 shadow-sm ${
-                      late ? "border-red-600 bg-red-50" : "border-amber-200 bg-white"
-                    }`}
-                  >
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-6xl font-black tabular-nums">{o.number}</span>
-                      <span className={`text-2xl font-bold tabular-nums ${late ? "text-red-600" : "text-gray-600"}`}>
-                        {late && "⚠ "}
-                        {formatElapsed(elapsed)}
-                      </span>
+                  <li key={o.id} className="flex overflow-hidden rounded-2xl bg-white shadow-sm">
+                    {/* 左端の帯：焼き待ち＝紺、10分以上＝warn */}
+                    <span className={`w-4 shrink-0 ${late ? "bg-warn" : "bg-navy"}`} aria-hidden />
+                    <div className="flex flex-1 flex-col gap-3 p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-6xl leading-none font-black text-navy tabular-nums">{o.number}</span>
+                        <span className="flex-1">
+                          {late ? (
+                            <span className="rounded-full bg-warn px-3 py-1 text-lg font-black text-ink">10分以上待ち</span>
+                          ) : (
+                            <span className="text-lg font-bold text-gray-600">焼き待ち</span>
+                          )}
+                        </span>
+                        <span className={`text-3xl font-black tabular-nums ${late ? "text-ink" : "text-gray-600"}`}>
+                          {formatElapsed(elapsed)}
+                        </span>
+                      </div>
+                      <ItemBadges items={o.items} size="lg" />
+                      <button
+                        type="button"
+                        onClick={() => move(o, "ready")}
+                        disabled={pending.has(o.id)}
+                        className="press min-h-20 rounded-2xl bg-ok text-3xl font-black text-white shadow-[0_0.25rem_0_rgb(0_0_0/0.2)] disabled:opacity-40"
+                      >
+                        完成
+                      </button>
                     </div>
-                    <ItemBadges items={o.items} size="lg" />
-                    <button
-                      type="button"
-                      onClick={() => move(o, "ready")}
-                      disabled={pending.has(o.id)}
-                      className="min-h-20 rounded-2xl bg-amber-600 text-3xl font-black text-white active:bg-amber-700 disabled:opacity-40"
-                    >
-                      完成
-                    </button>
                   </li>
                 );
               })}
@@ -106,37 +116,40 @@ export function KitchenScreen() {
         </section>
 
         <aside className="flex flex-col gap-4">
-          <section className="rounded-3xl border-4 border-green-600 bg-white p-4">
-            <h2 className="mb-3 text-2xl font-bold text-green-700">
+          <section className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-3 text-2xl font-black text-ok">
               呼び出し中 <span className="tabular-nums">{ready.length}</span>件
             </h2>
             {ready.length === 0 ? (
-              <p className="text-xl text-gray-400">なし</p>
+              <p className="text-xl text-gray-500">なし</p>
             ) : (
               <ul className="flex flex-col gap-3">
                 {ready.map((o) => (
-                  <li key={o.id} className="rounded-2xl bg-green-50 p-3">
-                    <div className="mb-2 flex items-center gap-3">
-                      <span className="text-5xl font-black tabular-nums">{o.number}</span>
-                      <ItemBadges items={o.items} size="sm" />
-                    </div>
-                    <div className="grid grid-cols-[2fr_1fr] gap-2">
-                      <button
-                        type="button"
-                        onClick={() => move(o, "served")}
-                        disabled={pending.has(o.id)}
-                        className="min-h-16 rounded-2xl bg-green-600 text-2xl font-black text-white active:bg-green-700 disabled:opacity-40"
-                      >
-                        渡した
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => move(o, "waiting")}
-                        disabled={pending.has(o.id)}
-                        className="min-h-16 rounded-2xl border-2 border-gray-400 bg-white text-xl font-bold active:bg-gray-100 disabled:opacity-40"
-                      >
-                        戻す
-                      </button>
+                  <li key={o.id} className="flex overflow-hidden rounded-xl bg-paper">
+                    <span className="w-3 shrink-0 bg-ok" aria-hidden />
+                    <div className="flex-1 p-3">
+                      <div className="mb-2 flex items-center gap-3">
+                        <span className="text-5xl leading-none font-black text-navy tabular-nums">{o.number}</span>
+                        <ItemBadges items={o.items} size="sm" />
+                      </div>
+                      <div className="grid grid-cols-[2fr_1fr] gap-2">
+                        <button
+                          type="button"
+                          onClick={() => move(o, "served")}
+                          disabled={pending.has(o.id)}
+                          className="press min-h-16 rounded-2xl bg-ok text-2xl font-black text-white disabled:opacity-40"
+                        >
+                          渡した
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => move(o, "waiting")}
+                          disabled={pending.has(o.id)}
+                          className="press min-h-16 rounded-2xl border-2 border-gray-400 bg-white text-xl font-bold active:bg-gray-100 disabled:opacity-40"
+                        >
+                          戻す
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -144,10 +157,10 @@ export function KitchenScreen() {
             )}
           </section>
 
-          <section className="rounded-3xl border-2 border-gray-300 bg-white p-4">
+          <section className="rounded-2xl bg-white p-4 shadow-sm">
             <h2 className="mb-2 text-xl font-bold text-gray-600">最近渡した注文</h2>
             {served.length === 0 ? (
-              <p className="text-lg text-gray-400">なし</p>
+              <p className="text-lg text-gray-500">なし</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {served.map((o) => (
@@ -160,7 +173,7 @@ export function KitchenScreen() {
                       type="button"
                       onClick={() => move(o, "ready")}
                       disabled={pending.has(o.id)}
-                      className="min-h-16 w-24 rounded-2xl border-2 border-gray-400 text-xl font-bold active:bg-gray-100 disabled:opacity-40"
+                      className="press min-h-16 w-24 rounded-2xl border-2 border-gray-400 text-xl font-bold active:bg-gray-100 disabled:opacity-40"
                     >
                       戻す
                     </button>
