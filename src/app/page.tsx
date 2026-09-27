@@ -1,33 +1,39 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const LINKS = [
   { href: "/register", label: "レジ", note: "レジPC" },
   { href: "/kitchen", label: "キッチン", note: "キッチンPC" },
   { href: "/display", label: "呼び出し表示", note: "お客さん向け" },
-  { href: "/admin", label: "管理", note: "責任者" },
+  { href: "/admin", label: "管理", note: "責任者のスマホ" },
 ] as const;
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-xl flex-1 p-6">
-      <h1 className="mb-8 text-center text-3xl font-bold">
-        🐟 およげない！たいやきくん
-      </h1>
-      <ul className="grid gap-4">
-        {LINKS.map((l) => (
-          <li key={l.href}>
-            <Link
-              href={l.href}
-              className="flex min-h-20 items-center justify-between rounded-2xl border-2 border-amber-700 bg-white px-6 text-2xl font-bold shadow-sm active:bg-amber-100"
-            >
-              <span>{l.label}</span>
-              <span className="text-base font-normal text-gray-600">
-                {l.note} → {l.href}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <main className="bg-seigaiha flex min-h-dvh flex-1 flex-col items-center justify-center gap-8 px-4 py-8">
+      <Image
+        src="/brand/logo.png"
+        alt="およげない！たいやきくん"
+        width={752}
+        height={799}
+        priority
+        className="h-auto w-[min(70vw,20rem)] drop-shadow-[0_0.5rem_0_rgb(0_0_0/0.35)]"
+      />
+      <nav aria-label="画面を選ぶ" className="w-full max-w-2xl">
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {LINKS.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                className="press flex min-h-24 flex-col items-center justify-center rounded-3xl bg-white px-6 text-navy shadow-[0_0.4rem_0_rgb(0_0_0/0.3)]"
+              >
+                <span className="text-3xl font-black">{l.label}</span>
+                <span className="text-base text-gray-600">{l.note}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </main>
   );
 }

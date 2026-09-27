@@ -228,10 +228,26 @@ button:disabled {
   font-size: 32cqw;
 }
 
+/* ── 管理 /admin：進捗バーを泳ぐたい焼き（右向きにして、上下にゆらゆら） ── */
+@keyframes swim {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg);
+  }
+  50% {
+    transform: translate(-50%, -62%) scaleX(-1) rotate(6deg);
+  }
+}
+.swim {
+  transform: translate(-50%, -50%) scaleX(-1);
+  animation: swim 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ukiwa-new,
   .drift,
-  .pop {
+  .pop,
+  .swim {
     animation: none;
   }
   .splash-drop {

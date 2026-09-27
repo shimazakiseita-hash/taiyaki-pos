@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { AppHeader } from "@/components/AppHeader";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { FLAVORS } from "@/lib/menu";
@@ -24,7 +25,7 @@ function formatWait(seconds: number | null): string {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-3xl bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-bold text-gray-600">{title}</h2>
+      <h2 className="mb-3 text-lg font-black text-navy">{title}</h2>
       {children}
     </section>
   );
@@ -35,7 +36,8 @@ export function AdminScreen() {
   const server = usePolling<ServerInfo>("/api/server-info", 10_000);
   const s = summary.data;
 
-  const progress = s ? Math.min(100, (s.soldTotal / s.targetQty) * 100) : 0;
+  const ratio = s ? s.soldTotal / s.targetQty : 0;
+  const progress = Math.min(100, ratio * 100);
 
   return (
     <>
@@ -44,7 +46,7 @@ export function AdminScreen() {
       <main className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">
         <Card title="売上">
           <p className="text-5xl font-black tabular-nums">{s ? `${s.revenue.toLocaleString()}円` : "…"}</p>
-          <p className="mt-1 text-3xl font-bold text-amber-800 tabular-nums">金券 {s?.tickets ?? "…"}枚</p>
+          <p className="mt-1 text-3xl font-black text-navy tabular-nums">金券 {s?.tickets ?? "…"}枚</p>
           <p className="mt-2 text-sm text-gray-500">閉店後、実際の金券の枚数と照合してください</p>
         </Card>
 
@@ -53,10 +55,31 @@ export function AdminScreen() {
             {s?.soldTotal ?? "…"}
             <span className="text-xl font-bold text-gray-500"> / 目標 {s?.targetQty ?? "…"}個</span>
           </p>
-          <div className="mt-3 h-6 overflow-hidden rounded-full bg-gray-200" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-amber-600 transition-all" style={{ width: `${progress}%` }} />
+          {/* 進捗バー：たい焼きが目標に向かって泳いでいく（両端ではみ出さないよう左右に余白） */}
+          <div className="mt-4 px-5">
+            <div
+              className="relative h-5 rounded-full bg-gray-200"
+              role="progressbar"
+              aria-label="目標に対する販売数"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="h-full rounded-full bg-red transition-[width] duration-700" style={{ width: `${progress}%` }} />
+              <Image
+                src="/brand/character.png"
+                alt=""
+                width={512}
+                height={512}
+                className="swim absolute top-1/2 w-10 rounded-full bg-white shadow transition-[left] duration-700"
+                style={{ left: `${progress}%` }}
+              />
+            </div>
           </div>
-          <p className="mt-1 text-right text-sm text-gray-600 tabular-nums">{progress.toFixed(0)}%</p>
+          <p className="mt-2 flex justify-between text-sm text-gray-600 tabular-nums">
+            <span>{ratio >= 1 ? <span className="font-black text-red">目標達成！</span> : `あと ${s ? s.targetQty - s.soldTotal : "…"}個`}</span>
+            <span>{Math.round(ratio * 100)}%</span>
+          </p>
 
           <table className="mt-3 w-full text-lg">
             <thead>
@@ -98,7 +121,7 @@ export function AdminScreen() {
           <a
             href="/api/export.csv"
             download
-            className="flex min-h-16 items-center justify-center rounded-2xl bg-gray-900 text-xl font-bold text-white active:bg-gray-700"
+            className="press flex min-h-16 items-center justify-center rounded-2xl bg-navy text-xl font-bold text-white active:bg-navy-light"
           >
             全注文をCSVでダウンロード
           </a>
@@ -109,7 +132,7 @@ export function AdminScreen() {
           {!server.data ? (
             <p className="text-gray-500">…</p>
           ) : server.data.urls.length === 0 ? (
-            <p className="text-red-600">LANのIPアドレスが見つかりません。テザリングに接続しているか確認してください</p>
+            <p className="font-bold text-red">LANのIPアドレスが見つかりません。テザリングに接続しているか確認してください</p>
           ) : (
             server.data.urls.map((url) => (
               <div key={url} className="mb-3">
