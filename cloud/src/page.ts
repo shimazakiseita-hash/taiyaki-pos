@@ -11,10 +11,18 @@ export const PAGE_HTML = `<!doctype html>
 <meta name="theme-color" content="#1b2a4a">
 <title>呼び出し状況｜およげない！たいやきくん</title>
 <link rel="preload" href="/fonts/yuji-syuku-subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/mplus-rounded-subset.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   @font-face {
     font-family: "Yuji Syuku";
     src: url(/fonts/yuji-syuku-subset.woff2) format("woff2");
+    font-display: swap;
+  }
+  /* ゲームまわりは、子どもにも読みやすい丸くて太い文字 */
+  @font-face {
+    font-family: "M PLUS Rounded 1c";
+    src: url(/fonts/mplus-rounded-subset.woff2) format("woff2");
+    font-weight: 800;
     font-display: swap;
   }
   :root {
@@ -28,6 +36,9 @@ export const PAGE_HTML = `<!doctype html>
   button { font: inherit; cursor: pointer; touch-action: manipulation; }
   [hidden] { display: none !important; }
   .brush { font-family: "Yuji Syuku", ${SANS}; font-weight: 400; }
+  .maru, .game-card, .game-panel, .mine-play { font-family: "M PLUS Rounded 1c", ${SANS}; font-weight: 800; }
+  /* ひらがなは「ことばの あいだ」に空白を入れているので、行はそこでだけ折り返す（「う！」だけ次の行、を防ぐ） */
+  .game-card, .game-panel, .mine-play { word-break: keep-all; overflow-wrap: anywhere; }
 
   /* 青海波（店内の呼び出し表示と同じ描き方） */
   .sea {
@@ -163,14 +174,14 @@ export const PAGE_HTML = `<!doctype html>
     50% { transform: scaleX(-1) translateY(-8%) rotate(4deg); }
   }
   .kicker { margin: 0; font-weight: 900; color: #ffe9a8; }
-  .game-card h2 { text-align: left; font-size: 1.6rem; line-height: 1.3; text-shadow: 0 0.12rem 0 rgb(0 0 0 / 0.25); }
+  .game-card h2 { text-align: left; font-size: 1.55rem; line-height: 1.25; text-shadow: 0 0.12rem 0 rgb(0 0 0 / 0.25); }
   .cta { width: 100%; min-height: 4rem; border: 0; border-radius: 1rem; background: #fff; color: var(--red); font-size: 1.4rem; font-weight: 900; box-shadow: 0 0.3rem 0 rgb(0 0 0 / 0.25); animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
   .ranking-box { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; border-radius: 1rem; background: rgb(255 255 255 / 0.14); }
   .ranking-box .hint { color: #fff; text-align: center; }
   .mine-play { width: 100%; margin-top: 0.9rem; min-height: 3.2rem; border: 0; border-radius: 0.8rem; background: var(--red); color: #fff; font-size: 1.05rem; font-weight: 900; box-shadow: 0 0.25rem 0 rgb(0 0 0 / 0.2); }
   .wide { width: 100%; }
-  .rank-h { margin: 0; font-size: 1.3rem; color: #fff; font-weight: 400; text-align: center; }
+  .rank-h { margin: 0; font-size: 1.2rem; color: #fff; text-align: center; }
   .ranking { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; padding: 0; list-style: none; text-align: left; }
   .ranking li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0.7rem; border-radius: 0.6rem; background: #fff; font-weight: 700; }
   .ranking li:nth-child(-n+3) .rank { color: var(--red); }
@@ -181,12 +192,19 @@ export const PAGE_HTML = `<!doctype html>
   .game canvas { display: block; }
   .game-close { position: absolute; top: calc(0.5rem + env(safe-area-inset-top)); right: 0.5rem; width: 3rem; height: 3rem; border: 0; border-radius: 999px; background: rgb(0 0 0 / 0.35); color: #fff; font-size: 1.6rem; font-weight: 700; }
   .game-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22rem, calc(100% - 2rem)); display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem; border-radius: 1.5rem; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 0.4rem 0 rgb(0 0 0 / 0.3); }
-  .game-title { margin: 0; font-size: 1.45rem; color: var(--navy); white-space: nowrap; }
+  .game-title { margin: 0; font-size: 1.4rem; color: var(--navy); white-space: nowrap; }
   .game-text { margin: 0; line-height: 1.5; }
   .game-text.small { font-size: 0.9rem; color: #4a4a4a; }
-  .game-reason { margin: 0; font-family: "Yuji Syuku", ${SANS}; font-size: 1.6rem; color: var(--navy); }
+  .game-reason { margin: 0; font-size: 1.5rem; color: var(--navy); }
+  .game-cheer { margin: 0; font-size: 1.05rem; color: var(--red); }
+  .legend { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 0.7rem 0.8rem; list-style: none; border-radius: 1rem; background: #fff; text-align: left; }
+  .legend-row { display: flex; align-items: center; gap: 0.7rem; }
+  .legend-pic { display: flex; justify-content: center; width: 4.2rem; flex-shrink: 0; }
+  .legend-pic svg { height: 2.1rem; width: auto; }
+  .legend-text { font-size: 1rem; line-height: 1.35; }
+  .legend-text b { color: var(--red); }
   .game-reason.done { font-size: 2.2rem; color: var(--red); }
-  .game-score { margin: 0; font-size: 3rem; font-weight: 900; color: var(--red); line-height: 1.1; }
+  .game-score { margin: 0; font-size: 3rem; color: var(--red); line-height: 1.1; }
   .rank-form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding-top: 0.5rem; border-top: 2px dashed #d9cfbd; text-align: left; }
   .rank-form label { grid-column: 1 / -1; font-size: 0.95rem; }
   .rank-form input { font-size: 1.1rem; font-weight: 700; padding: 0.5rem 0.6rem; text-align: left; border-width: 2px; }
@@ -232,7 +250,7 @@ export const PAGE_HTML = `<!doctype html>
         <span class="goal">受け取り口</span>
         <div class="swimmer-lane"><img id="swimmer" class="swimmer" src="/brand/taiyaki.webp" alt="" width="240" height="167"></div>
       </div>
-      <button id="mine-play" class="mine-play" type="button" hidden>待っている間に、ミニゲームであそぶ <span aria-hidden="true">▶</span></button>
+      <button id="mine-play" class="mine-play" type="button" hidden>まっている あいだに ゲームで あそぶ <span aria-hidden="true">▶</span></button>
       <button id="change" class="link" type="button">番号を変える</button>
     </div>
   </section>
@@ -243,15 +261,15 @@ export const PAGE_HTML = `<!doctype html>
     <div class="game-hero">
       <img class="game-fish" src="/brand/taiyaki.webp" alt="" width="240" height="160">
       <div>
-        <p class="kicker">待ち時間にあそぼう！</p>
-        <h2 id="game-h" class="brush">およげない？<br>たいやきくん</h2>
+        <p class="kicker">まちじかんに あそぼう！</p>
+        <h2 id="game-h" class="maru">およげない？<br>たいやきくん</h2>
       </div>
     </div>
-    <button id="game-open" class="cta" type="button">ゲームであそぶ <span aria-hidden="true">▶</span></button>
+    <button id="game-open" class="cta" type="button">ゲームで あそぶ <span aria-hidden="true">▶</span></button>
     <div class="ranking-box">
-      <h3 class="brush rank-h">${BRUSH_TEXT.ranking}</h3>
+      <h3 class="maru rank-h">きょうの ランキング</h3>
       <ol id="ranking" class="ranking"></ol>
-      <p id="ranking-empty" class="hint" hidden>まだ記録がありません。1番乗りしよう！</p>
+      <p id="ranking-empty" class="hint" hidden>まだ だれも いないよ。<br>いちばんのり しよう！</p>
     </div>
   </section>
 

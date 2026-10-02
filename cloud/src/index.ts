@@ -54,7 +54,7 @@ export class StatusStore extends DurableObject<Env> {
 
   async submit(entry: RankingEntry): Promise<SubmitResult> {
     const max = (await this.ctx.storage.get<number>("maxNumber")) ?? 0;
-    if (entry.number > max) return { ok: false, error: "その番号の整理券はまだ出ていません" };
+    if (entry.number > max) return { ok: false, error: "その ばんごうの せいりけんは まだ でていないよ" };
     const board = upsertBest(await this.board(), entry);
     await this.ctx.storage.put(`ranking:${jstDateKey()}`, board);
     const rows = toRows(board);
@@ -130,13 +130,14 @@ export default {
         return json({ top: await store.ranking() });
       }
       if (request.method === "POST") {
+        // お客さん（子どもも）に見せるメッセージなので、ひらがなでやさしく
         const parsed = rankingSubmitSchema.safeParse(await readJson(request));
         if (!parsed.success) return json({ error: "形式が不正です" }, 400);
         const { number, score, playMs } = parsed.data;
         const name = normalizeName(parsed.data.name);
-        if (!name) return json({ error: "名前は1〜10文字にしてください" }, 400);
-        if (containsNgWord(name)) return json({ error: "その名前は使えません。別の名前にしてください" }, 400);
-        if (!isPlausibleScore(score, playMs)) return json({ error: "記録を確認できませんでした" }, 400);
+        if (!name) return json({ error: "なまえは 1〜10もじに してね" }, 400);
+        if (containsNgWord(name)) return json({ error: "その なまえは つかえないよ。べつの なまえに してね" }, 400);
+        if (!isPlausibleScore(score, playMs)) return json({ error: "きろくを たしかめられなかったよ" }, 400);
         const result = await store.submit({ number, name, score, at: new Date().toISOString() });
         return result.ok ? json(result) : json({ error: result.error }, 400);
       }
