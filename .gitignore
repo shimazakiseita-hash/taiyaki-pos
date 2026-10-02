@@ -42,3 +42,8 @@ next-env.d.ts
 
 # SQLite データベース（当日のデータ。コミットしない）
 /data/
+
+# お客さん向けページ（Cloudflare Workers）
+/cloud/node_modules/
+/cloud/.wrangler/
+/cloud/.dev.vars

@@ -26,3 +26,10 @@ export const statusListSchema = z.array(z.enum(ORDER_STATUSES));
 export const putSettingsSchema = z.object({
   targetQty: z.number().int().min(1).max(99999),
 });
+
+const orderNumbersSchema = z.array(z.number().int().min(1)).max(1000);
+
+export const publicStatusSchema = z.object({
+  ready: orderNumbersSchema,
+  waiting: orderNumbersSchema,
+});
