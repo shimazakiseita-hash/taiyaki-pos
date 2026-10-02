@@ -30,7 +30,9 @@
 - `npm run build && npm run start` — 本番起動（当日はこちら。`-H 0.0.0.0 -p 3000`）
 - `npm test` — Vitest
 - `npm run db:reset` — DBを初期化（確認プロンプトつき）
-- `npm run public-sync` — お客さん向けページへ呼び出し番号を送り続ける（`.env.public` が必要）
+- `npm run event` — **当日用**：本番サーバー＋お客さん向けページへの送信＋10分ごとの自動バックアップを1コマンドで起動（落ちたら自動再起動、Ctrl+C で最後のバックアップを取って停止）
+- `npm run backup` — いますぐバックアップ（`backups/` に全注文のCSVとDBのコピー。`BACKUP_DIR` で保存先を変えられる）
+- `npm run public-sync` — お客さん向けページへ呼び出し番号を送り続ける（`.env.public` が必要。`npm run event` に含まれる）
 - `cd cloud && npm run dev` / `npm run deploy` — お客さん向けページのローカル起動 / Cloudflare へ公開
 - `cd cloud && npm run assets` — お客さん向けページの画像（WebP）と筆文字フォント（使う文字だけ）を作り直す
 - `npm run tickets -- 1 300` — QRコードつき番号札とポスターの印刷用ページ（`print/tickets.html`）を作る
