@@ -88,6 +88,7 @@ export const PAGE_HTML = `<!doctype html>
   .state.plain { font-family: ${SANS}; font-weight: 900; font-size: 1.25rem; white-space: normal; }
   .detail { margin: 0; font-size: 1.15rem; font-weight: 700; }
   .detail b { font-size: 1.8rem; color: var(--red); }
+  .eta { display: block; margin-top: 0.2rem; font-size: 1rem; color: #4a4a4a; }
   #mine.is-done { outline: 0.3rem solid #fff; box-shadow: 0 0 2rem 0.5rem rgb(255 255 255 / 0.45), 0 0.4rem 0 rgb(0 0 0 / 0.3); }
 
   /* 進み具合：たい焼きが受け取り口へ泳いでいく */
@@ -340,7 +341,8 @@ export const PAGE_HTML = `<!doctype html>
       setTrack(1);
     } else if (s === "waiting") {
       state.textContent = T.baking;
-      detail.innerHTML = lookup.ahead === 0 ? "前に待っている注文はありません" : "前にあと <b>" + lookup.ahead + "</b> 件";
+      detail.innerHTML = (lookup.ahead === 0 ? "前に待っている注文はありません" : "前にあと <b>" + lookup.ahead + "</b> 件")
+        + (lookup.etaSeconds === null ? "" : '<span class="eta">目安：あと約' + Math.max(1, Math.ceil(lookup.etaSeconds / 60)) + "分</span>");
       setTrack(progress(lookup.ahead));
     } else if (s === "notFound") {
       state.textContent = "呼び出し中・焼き待ちにありません";

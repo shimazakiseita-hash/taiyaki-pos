@@ -2,9 +2,11 @@
  * 当日用：本番サーバー・お客さん向けページへの送信・自動バックアップを1コマンドで動かす。
  * 使い方: npm run event（Ctrl+C で最後のバックアップを取ってから全部止まる）
  * 落ちたものは自動で再起動する。バックアップは BACKUP_INTERVAL_MIN 分ごと（既定10分）に backups/ へ
+ * npm run practice（--practice）は練習モード：毎回まっさらな data/practice.db を使い、送信とバックアップはしない
  */
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 import readline from "node:readline";
 import { getServerInfo } from "../src/lib/serverInfo";
 import { defaultBackupOptions, takeBackup } from "./lib/backup";
@@ -12,6 +14,8 @@ import { defaultBackupOptions, takeBackup } from "./lib/backup";
 const PORT = 3000;
 const LOCAL = `http://localhost:${PORT}`;
 const BACKUP_MIN = Number(process.env.BACKUP_INTERVAL_MIN ?? 10);
+const PRACTICE = process.argv.includes("--practice");
+const PRACTICE_DB = path.join(process.cwd(), "data", "practice.db");
 const NEXT_BIN = require.resolve("next/dist/bin/next");
 
 let stopping = false;
@@ -52,6 +56,19 @@ function supervise(label: string, args: string[]) {
   };
 }
 
+/** ソース（src/, public/, 設定）がビルドより新しければ true。ビルドし忘れて古い版で開店しないように */
+function buildIsStale(): boolean {
+  const built = fs.statSync(".next/BUILD_ID", { throwIfNoEntry: false })?.mtimeMs;
+  if (built === undefined) return true;
+  const newest = (p: string): number => {
+    const st = fs.statSync(p, { throwIfNoEntry: false });
+    if (!st) return 0;
+    if (!st.isDirectory()) return st.mtimeMs;
+    return Math.max(0, ...fs.readdirSync(p).map((name) => newest(path.join(p, name))));
+  };
+  return ["src", "public", "next.config.ts", "package.json"].some((p) => newest(p) > built);
+}
+
 async function responds(url: string): Promise<boolean> {
   try {
     return (await fetch(url, { signal: AbortSignal.timeout(1500) })).ok;
@@ -76,9 +93,17 @@ async function main() {
     console.error(`すでにポート${PORT}でサーバーが動いています。先にそちらを止めてください`);
     process.exit(1);
   }
-  if (!fs.existsSync(".next/BUILD_ID")) {
-    log("本番ビルドがないので作ります（1分ほどかかります）");
+  if (buildIsStale()) {
+    log("本番ビルドがないか古いので作り直します（1分ほどかかります）");
     if (spawnSync(process.execPath, [NEXT_BIN, "build"], { stdio: "inherit" }).status !== 0) process.exit(1);
+  }
+
+  if (PRACTICE) {
+    // 子プロセス（サーバー）にも引き継がれる
+    process.env.TAIYAKI_DB_PATH = PRACTICE_DB;
+    process.env.TAIYAKI_PRACTICE = "1";
+    for (const f of [PRACTICE_DB, `${PRACTICE_DB}-wal`, `${PRACTICE_DB}-shm`]) fs.rmSync(f, { force: true });
+    log("練習モードで起動します（まっさらな練習用DB。本番のデータ・お客さん向けページ・バックアップには影響しません）");
   }
 
   const server = supervise("サーバー", [NEXT_BIN, "start", "-H", "0.0.0.0", "-p", String(PORT)]);
@@ -96,22 +121,26 @@ async function main() {
   }
   console.log("");
 
-  const syncOn = fs.existsSync(".env.public") || !!process.env.PUBLIC_STATUS_URL;
+  const syncOn = !PRACTICE && (fs.existsSync(".env.public") || !!process.env.PUBLIC_STATUS_URL);
   // tsx の CLI は子プロセスをもう1つ作るので、強制終了で取り残されないよう同じプロセスで読み込む
   const sync = syncOn ? supervise("送信", ["--import", "tsx", "scripts/public-sync.ts"]) : undefined;
-  if (!syncOn) log("お客さん向けページへの送信はオフです（.env.public がありません）");
+  if (!syncOn && !PRACTICE) log("お客さん向けページへの送信はオフです（.env.public がありません）");
 
-  log(`バックアップは${BACKUP_MIN}分ごとに ${defaultBackupOptions().dir} へ保存します`);
-  await backup();
-  const timer = setInterval(backup, BACKUP_MIN * 60 * 1000);
+  if (!PRACTICE) log(`バックアップは${BACKUP_MIN}分ごとに ${defaultBackupOptions().dir} へ保存します`);
+  if (!PRACTICE) await backup();
+  const timer = PRACTICE ? undefined : setInterval(backup, BACKUP_MIN * 60 * 1000);
   log("起動しました。止めるときは Ctrl+C");
 
   const shutdown = async () => {
     if (stopping) return;
     stopping = true;
     clearInterval(timer);
-    log("止めています…最後のバックアップを取ります");
-    await backup();
+    if (PRACTICE) {
+      log("止めています…");
+    } else {
+      log("止めています…最後のバックアップを取ります");
+      await backup();
+    }
     await Promise.all([sync?.stop(), server.stop()]);
     log("すべて止めました");
     process.exit(0);

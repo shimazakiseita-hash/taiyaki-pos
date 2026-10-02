@@ -31,6 +31,7 @@
 - `npm test` — Vitest
 - `npm run db:reset` — DBを初期化（確認プロンプトつき）
 - `npm run event` — **当日用**：本番サーバー＋お客さん向けページへの送信＋10分ごとの自動バックアップを1コマンドで起動（落ちたら自動再起動、Ctrl+C で最後のバックアップを取って停止）
+- `npm run practice` — 練習モード（まっさらな練習用DB・送信なし・バックアップなし、全画面に「練習モード」の帯）。係の人の練習用
 - `npm run backup` — いますぐバックアップ（`backups/` に全注文のCSVとDBのコピー。`BACKUP_DIR` で保存先を変えられる）
 - `npm run public-sync` — お客さん向けページへ呼び出し番号を送り続ける（`.env.public` が必要。`npm run event` に含まれる）
 - `cd cloud && npm run dev` / `npm run deploy` — お客さん向けページのローカル起動 / Cloudflare へ公開

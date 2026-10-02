@@ -33,4 +33,6 @@ export const publicStatusSchema = z.object({
   ready: orderNumbersSchema,
   waiting: orderNumbersSchema,
   avgWaitSeconds: z.number().int().min(0).max(86400).nullable(),
+  // 古い public-sync（目安を送らない）からでも受け付ける
+  secondsPerOrder: z.number().int().min(0).max(86400).nullable().default(null),
 });

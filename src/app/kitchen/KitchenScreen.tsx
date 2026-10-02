@@ -1,8 +1,9 @@
 "use client";
 
 import { AppHeader } from "@/components/AppHeader";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { KioskBar } from "@/components/KioskBar";
 import { ItemBadges } from "@/components/ItemBadges";
 import { Toast, useToast } from "@/components/Toast";
 import { setOrderStatus } from "@/lib/client";
@@ -10,6 +11,7 @@ import { FLAVORS } from "@/lib/menu";
 import type { OrderStatus } from "@/lib/status";
 import { countByFlavor, sum } from "@/lib/summary";
 import type { Order } from "@/lib/types";
+import { useKiosk } from "@/lib/useKiosk";
 import { formatElapsed, useNow } from "@/lib/useNow";
 import { usePolling } from "@/lib/usePolling";
 
@@ -21,6 +23,22 @@ export function KitchenScreen() {
   const now = useNow(orders.clockOffsetMs);
   const toast = useToast();
   const [pending, setPending] = useState<Set<number>>(new Set());
+  const { awake, chime } = useKiosk();
+  const [soundOn, setSoundOn] = useState(true);
+
+  // 新しい注文が来たら鳴らす（画面を開いた時点の注文は対象外）
+  const knownIds = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    if (!orders.data) return;
+    const ids = orders.data.map((o) => o.id);
+    if (knownIds.current === null) {
+      knownIds.current = new Set(ids);
+      return;
+    }
+    const fresh = ids.some((id) => !knownIds.current!.has(id));
+    for (const id of ids) knownIds.current.add(id);
+    if (fresh && soundOn) chime();
+  }, [orders.data, soundOn, chime]);
 
   const all = orders.data ?? [];
   const waiting = all.filter((o) => o.status === "waiting");
@@ -69,10 +87,22 @@ export function KitchenScreen() {
 
       <main className="grid flex-1 grid-cols-[2fr_1fr] gap-4 p-3">
         <section>
-          <h2 className="mb-3 text-2xl font-black text-navy">
-            焼き待ち <span className="tabular-nums">{waiting.length}</span>件
-            <span className="ml-3 text-base font-normal text-gray-600">古い順</span>
-          </h2>
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="text-2xl font-black text-navy">
+              焼き待ち <span className="tabular-nums">{waiting.length}</span>件
+              <span className="ml-3 text-base font-normal text-gray-600">古い順</span>
+            </h2>
+            <button
+              type="button"
+              onClick={() => setSoundOn((on) => !on)}
+              aria-pressed={soundOn}
+              className={`press ml-auto min-h-12 rounded-full border-2 px-4 text-lg font-bold ${
+                soundOn ? "border-navy bg-navy text-white" : "border-gray-400 bg-white text-gray-600"
+              }`}
+            >
+              新しい注文の音：{soundOn ? "オン" : "オフ"}
+            </button>
+          </div>
           {waiting.length === 0 ? (
             <p className="rounded-2xl bg-white p-8 text-center text-2xl text-gray-500">焼き待ちの注文はありません</p>
           ) : (
@@ -185,6 +215,7 @@ export function KitchenScreen() {
         </aside>
       </main>
       <Toast message={toast.message} onClose={toast.clear} />
+      <KioskBar awake={awake} sound={soundOn} />
     </>
   );
 }

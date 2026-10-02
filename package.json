@@ -13,11 +13,13 @@
     "public-sync": "tsx scripts/public-sync.ts",
     "tickets": "tsx scripts/tickets.ts",
     "event": "tsx scripts/event.ts",
-    "backup": "tsx scripts/backup.ts"
+    "backup": "tsx scripts/backup.ts",
+    "practice": "tsx scripts/event.ts --practice"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
     "next": "16.3.6",
+    "nosleep.js": "^0.12.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.5"

@@ -1,5 +1,5 @@
 /**
- * お客さん向けページ（Cloudflare）へ、呼び出し状況（番号と平均待ち時間だけ）を送り続ける。
+ * お客さん向けページ（Cloudflare）へ、呼び出し状況（番号と待ち時間の目安だけ）を送り続ける。
  * 使い方: npm run public-sync（.env.public に PUBLIC_STATUS_URL と PUBLIC_STATUS_TOKEN を書いておく）
  * 止まっても・失敗してもレジやキッチンには影響しない
  */
@@ -41,7 +41,7 @@ async function tick() {
     getJson<Order[]>("/api/orders?status=waiting,ready"),
     getJson<Summary>("/api/summary"),
   ]);
-  const body = JSON.stringify(toPublicStatus(orders, summary.avgWaitSeconds));
+  const body = JSON.stringify(toPublicStatus(orders, summary));
   if (body === lastSent && Date.now() - lastSentAt < HEARTBEAT_MS) return;
 
   const put = await fetch(`${target}/api/status`, {

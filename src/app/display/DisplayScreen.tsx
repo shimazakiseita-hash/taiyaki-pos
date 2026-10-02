@@ -4,8 +4,10 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { KioskBar } from "@/components/KioskBar";
 import { FLAVORS } from "@/lib/menu";
 import type { Order } from "@/lib/types";
+import { useKiosk } from "@/lib/useKiosk";
 import { usePolling } from "@/lib/usePolling";
 
 const HIGHLIGHT_MS = 6000;
@@ -22,6 +24,7 @@ const DROPS = [
 
 export function DisplayScreen() {
   const orders = usePolling<Order[]>("/api/orders?status=waiting,ready");
+  const kiosk = useKiosk();
   const all = orders.data ?? [];
   const ready = all
     .filter((o) => o.status === "ready")
@@ -139,6 +142,7 @@ export function DisplayScreen() {
           )}
         </section>
       </main>
+      <KioskBar awake={kiosk.awake} />
     </div>
   );
 }

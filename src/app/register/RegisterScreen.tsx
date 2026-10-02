@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { KioskBar } from "@/components/KioskBar";
 import { ItemBadges, itemsText } from "@/components/ItemBadges";
 import { Toast, useToast } from "@/components/Toast";
 import { sendJson, setOrderStatus } from "@/lib/client";
@@ -13,6 +14,7 @@ import { MAX_ORDER_QTY, calcAmount, calcTickets } from "@/lib/pricing";
 import { STATUS_LABELS } from "@/lib/status";
 import { sum } from "@/lib/summary";
 import type { CreatedOrder, Order } from "@/lib/types";
+import { useKiosk } from "@/lib/useKiosk";
 import { usePolling } from "@/lib/usePolling";
 
 const RECENT_COUNT = 5;
@@ -20,6 +22,7 @@ const RECENT_COUNT = 5;
 export function RegisterScreen() {
   const orders = usePolling<Order[]>("/api/orders");
   const toast = useToast();
+  const kiosk = useKiosk();
 
   const [cart, setCart] = useState<FlavorCounts>(emptyCounts);
   const [submitting, setSubmitting] = useState(false);
@@ -240,6 +243,7 @@ export function RegisterScreen() {
         )}
       </ConfirmDialog>
       <Toast message={toast.message} onClose={toast.clear} />
+      <KioskBar awake={kiosk.awake} />
     </>
   );
 }

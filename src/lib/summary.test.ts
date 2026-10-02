@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageWaitSeconds, computeSummary } from "./summary";
+import { averageWaitSeconds, computeSummary, secondsPerOrder } from "./summary";
 import type { Order, OrderItem } from "./types";
 import type { OrderStatus } from "./status";
 import { calcAmount } from "./pricing";
@@ -80,3 +80,24 @@ describe("averageWaitSeconds", () => {
     expect(averageWaitSeconds(orders)).toBe(330);
   });
 });
+
+describe("secondsPerOrder", () => {
+  const at = (min: number) => new Date(Date.parse("2026-10-01T03:00:00.000Z") + min * 60_000).toISOString();
+
+  it("完成が3件未満なら null", () => {
+    expect(secondsPerOrder([order("ready", [{ flavor: "anko", qty: 1 }], { readyAt: at(0) })])).toBeNull();
+  });
+
+  it("直近10件の完成の間隔の平均（取り消し・焼き待ちは数えない）", () => {
+    const orders: Order[] = [];
+    // 古い完成（0分）は直近10件から外れる。1〜10分に1件ずつ完成 → 1件あたり60秒
+    orders.push(order("served", [{ flavor: "anko", qty: 1 }], { readyAt: at(-30), servedAt: at(-29) }));
+    for (let m = 1; m <= 10; m++) {
+      orders.push(order(m % 2 ? "served" : "ready", [{ flavor: "anko", qty: 1 }], { readyAt: at(m) }));
+    }
+    orders.push(order("waiting", [{ flavor: "anko", qty: 1 }]));
+    orders.push(order("cancelled", [{ flavor: "anko", qty: 1 }]));
+    expect(secondsPerOrder(orders)).toBe(60);
+  });
+});
+
