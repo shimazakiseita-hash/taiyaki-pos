@@ -32,4 +32,5 @@ const orderNumbersSchema = z.array(z.number().int().min(1)).max(1000);
 export const publicStatusSchema = z.object({
   ready: orderNumbersSchema,
   waiting: orderNumbersSchema,
+  avgWaitSeconds: z.number().int().min(0).max(86400).nullable(),
 });

@@ -29,17 +29,17 @@ describe("toPublicStatus", () => {
       order(4, "cancelled"),
       order(6, "waiting"),
       order(7, "waiting"),
-    ]);
-    expect(s).toEqual({ ready: [2, 1], waiting: [5, 6, 7] });
+    ], 300);
+    expect(s).toEqual({ ready: [2, 1], waiting: [5, 6, 7], avgWaitSeconds: 300 });
   });
 
   it("番号以外の情報（金額・味）は含めない", () => {
-    expect(Object.keys(toPublicStatus([order(1, "waiting")]))).toEqual(["ready", "waiting"]);
+    expect(Object.keys(toPublicStatus([order(1, "waiting")], null))).toEqual(["ready", "waiting", "avgWaitSeconds"]);
   });
 });
 
 describe("lookupNumber", () => {
-  const s = { ready: [3], waiting: [4, 6, 9] };
+  const s = { ready: [3], waiting: [4, 6, 9], avgWaitSeconds: null };
 
   it("呼び出し中の番号", () => {
     expect(lookupNumber(s, 3)).toEqual({ state: "ready" });
@@ -57,9 +57,11 @@ describe("lookupNumber", () => {
 
 describe("publicStatusSchema", () => {
   it("番号の配列だけを受け付ける", () => {
-    expect(publicStatusSchema.safeParse({ ready: [1], waiting: [2, 3] }).success).toBe(true);
-    expect(publicStatusSchema.safeParse({ ready: [0], waiting: [] }).success).toBe(false);
-    expect(publicStatusSchema.safeParse({ ready: ["1"], waiting: [] }).success).toBe(false);
+    expect(publicStatusSchema.safeParse({ ready: [1], waiting: [2, 3], avgWaitSeconds: 240 }).success).toBe(true);
+    expect(publicStatusSchema.safeParse({ ready: [], waiting: [], avgWaitSeconds: null }).success).toBe(true);
+    expect(publicStatusSchema.safeParse({ ready: [0], waiting: [], avgWaitSeconds: null }).success).toBe(false);
+    expect(publicStatusSchema.safeParse({ ready: ["1"], waiting: [], avgWaitSeconds: null }).success).toBe(false);
+    expect(publicStatusSchema.safeParse({ ready: [], waiting: [], avgWaitSeconds: -1 }).success).toBe(false);
     expect(publicStatusSchema.safeParse({ ready: [] }).success).toBe(false);
   });
 });

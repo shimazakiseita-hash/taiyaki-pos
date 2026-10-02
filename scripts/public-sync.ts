@@ -1,9 +1,10 @@
 /**
- * お客さん向けページ（Cloudflare）へ、呼び出し状況（番号だけ）を送り続ける。
+ * お客さん向けページ（Cloudflare）へ、呼び出し状況（番号と平均待ち時間だけ）を送り続ける。
  * 使い方: npm run public-sync（.env.public に PUBLIC_STATUS_URL と PUBLIC_STATUS_TOKEN を書いておく）
  * 止まっても・失敗してもレジやキッチンには影響しない
  */
 import { toPublicStatus } from "../src/lib/publicStatus";
+import type { Summary } from "../src/lib/summary";
 import type { Order } from "../src/lib/types";
 
 const POLL_MS = 3000;
@@ -29,10 +30,18 @@ let lastSent = "";
 let lastSentAt = 0;
 let failing = false;
 
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${local}${path}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`レジPCのAPI ${path}: ${res.status}`);
+  return (await res.json()) as T;
+}
+
 async function tick() {
-  const res = await fetch(`${local}/api/orders?status=waiting,ready`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-  if (!res.ok) throw new Error(`レジPCのAPI: ${res.status}`);
-  const body = JSON.stringify(toPublicStatus((await res.json()) as Order[]));
+  const [orders, summary] = await Promise.all([
+    getJson<Order[]>("/api/orders?status=waiting,ready"),
+    getJson<Summary>("/api/summary"),
+  ]);
+  const body = JSON.stringify(toPublicStatus(orders, summary.avgWaitSeconds));
   if (body === lastSent && Date.now() - lastSentAt < HEARTBEAT_MS) return;
 
   const put = await fetch(`${target}/api/status`, {

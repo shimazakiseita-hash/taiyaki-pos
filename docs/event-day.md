@@ -27,7 +27,9 @@
    PUBLIC_STATUS_URL=https://taiyaki-status.<名前>.workers.dev
    PUBLIC_STATUS_TOKEN=<2で入力したのと同じ文字列>
    ```
-4. ページのURLからQRコードを作り、屋台に貼る紙と番号札に印刷する
+4. 番号札とポスターを作って印刷する：`npm run tickets -- 1 300`（`.env.public` のURLを使う）→ `print/tickets.html` をブラウザで開き、A4で印刷して点線で切る
+   - 番号札は番号ごとにQRコードが違う（読み取ると自分の番号のページが開く）。注文の番号と同じ番号の札を渡す
+   - 当日 `npm run db:reset` をしたら番号は1から振り直しになるので、札も1番から使う
 
 ### その他
 - [ ] テザリング役のスマホを決める（充電しながら使う。モバイルバッテリーを用意）

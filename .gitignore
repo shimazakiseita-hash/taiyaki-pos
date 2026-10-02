@@ -47,3 +47,6 @@ next-env.d.ts
 /cloud/node_modules/
 /cloud/.wrangler/
 /cloud/.dev.vars
+
+# 印刷用の番号札（npm run tickets で作る）
+/print/
