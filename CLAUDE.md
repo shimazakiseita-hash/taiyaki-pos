@@ -36,6 +36,7 @@
 - `npm run public-sync` — お客さん向けページへ呼び出し番号を送り続ける（`.env.public` が必要。`npm run event` に含まれる）
 - `cd cloud && npm run dev` / `npm run deploy` — お客さん向けページのローカル起動 / Cloudflare へ公開
 - `cd cloud && npm run assets` — お客さん向けページの画像（WebP）と筆文字フォント（使う文字だけ）を作り直す
+- `npm run ranking` / `npm run ranking -- remove 12` — ミニゲームの今日のランキングを見る / 不適切な名前などを消す
 - `npm run tickets -- 1 300` — QRコードつき番号札とポスターの印刷用ページ（`print/tickets.html`）を作る
 
 ## 設計ルール

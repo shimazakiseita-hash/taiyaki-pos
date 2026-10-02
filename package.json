@@ -14,7 +14,8 @@
     "tickets": "tsx scripts/tickets.ts",
     "event": "tsx scripts/event.ts",
     "backup": "tsx scripts/backup.ts",
-    "practice": "tsx scripts/event.ts --practice"
+    "practice": "tsx scripts/event.ts --practice",
+    "ranking": "tsx scripts/ranking.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

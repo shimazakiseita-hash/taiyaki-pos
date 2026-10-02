@@ -1,20 +1,7 @@
 /** お客さんのスマホで開くページ（5秒ごとに更新。画像とフォントは cloud/public から配る） */
-import { FLAVORS, type FlavorId } from "../../src/lib/menu";
-import { SET_PRICE, SET_SIZE, TICKET_VALUE, UNIT_PRICE } from "../../src/lib/pricing";
 import { BRUSH_TEXT } from "./brushText";
 
-const FLAVOR_COLORS: Record<FlavorId, { bg: string; fg: string }> = {
-  anko: { bg: "var(--anko)", fg: "#fff" },
-  custard: { bg: "var(--custard)", fg: "var(--ink)" },
-  matcha: { bg: "var(--matcha)", fg: "#fff" },
-  choco: { bg: "var(--choco)", fg: "#fff" },
-};
-
 const SANS = `"Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, system-ui, sans-serif`;
-
-const flavorChips = FLAVORS.map(
-  (f) => `<li style="background:${FLAVOR_COLORS[f.id].bg};color:${FLAVOR_COLORS[f.id].fg}">${f.name}</li>`,
-).join("");
 
 export const PAGE_HTML = `<!doctype html>
 <html lang="ja">
@@ -96,7 +83,7 @@ export const PAGE_HTML = `<!doctype html>
   .water { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 999px; background: linear-gradient(90deg, #9fd3ff, #4f8fd6); transition: width 1s ease; }
   .goal { position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 900; color: var(--navy); }
   .swimmer-lane { position: absolute; inset: 0 7rem 0 1.6rem; }
-  .swimmer { position: absolute; top: 50%; left: 0; width: 3.2rem; transform: translate(-50%, -50%) scaleX(-1); transition: left 1s ease; animation: swim 2.4s ease-in-out infinite; }
+  .swimmer { position: absolute; top: 50%; left: 0; width: 4rem; transform: translate(-50%, -50%) scaleX(-1); transition: left 1s ease; animation: swim 2.4s ease-in-out infinite; }
   @keyframes swim {
     0%, 100% { transform: translate(-50%, -50%) scaleX(-1) rotate(-6deg); }
     50% { transform: translate(-50%, -62%) scaleX(-1) rotate(6deg); }
@@ -165,22 +152,51 @@ export const PAGE_HTML = `<!doctype html>
   .muted-text { margin: 0; text-align: center; opacity: 0.75; }
   #avg { margin: 0; text-align: center; font-weight: 700; }
 
-  /* メニュー */
-  .menu { display: flex; flex-direction: column; gap: 0.8rem; text-align: center; }
-  .menu h2 { color: var(--navy); }
-  .prices { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.6rem 1rem; }
-  .prices p { margin: 0; font-size: 1.2rem; font-weight: 700; }
-  .prices b { font-size: 1.9rem; color: var(--red); }
-  .prices .set { transform: rotate(-3deg); background: var(--red); color: #fff; border-radius: 0.8rem; padding: 0.2rem 0.8rem; box-shadow: 0 0.2rem 0 rgb(0 0 0 / 0.2); }
-  .prices .set b { color: #fff; }
-  .flavors { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
-  .flavors li { padding: 0.3rem 0.9rem; border-radius: 999px; font-weight: 700; }
-  .menu .note { margin: 0; font-size: 0.95rem; color: #4a4a4a; }
-
   #updated { margin: 0; text-align: center; font-size: 0.9rem; opacity: 0.8; }
 
+  /* ミニゲームとランキング */
+  .game-card { display: flex; flex-direction: column; gap: 0.9rem; padding: 1.25rem; border-radius: 1.5rem; background: linear-gradient(160deg, #e2453d, var(--red)); box-shadow: 0 0.4rem 0 rgb(0 0 0 / 0.3); }
+  .game-hero { display: flex; align-items: center; gap: 0.75rem; }
+  .game-fish { width: 6.5rem; flex-shrink: 0; filter: drop-shadow(0 0.2rem 0 rgb(0 0 0 / 0.25)); animation: fishbob 2.4s ease-in-out infinite; }
+  @keyframes fishbob {
+    0%, 100% { transform: scaleX(-1) translateY(0) rotate(-4deg); }
+    50% { transform: scaleX(-1) translateY(-8%) rotate(4deg); }
+  }
+  .kicker { margin: 0; font-weight: 900; color: #ffe9a8; }
+  .game-card h2 { text-align: left; font-size: 1.6rem; line-height: 1.3; text-shadow: 0 0.12rem 0 rgb(0 0 0 / 0.25); }
+  .cta { width: 100%; min-height: 4rem; border: 0; border-radius: 1rem; background: #fff; color: var(--red); font-size: 1.4rem; font-weight: 900; box-shadow: 0 0.3rem 0 rgb(0 0 0 / 0.25); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+  .ranking-box { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; border-radius: 1rem; background: rgb(255 255 255 / 0.14); }
+  .ranking-box .hint { color: #fff; text-align: center; }
+  .mine-play { width: 100%; margin-top: 0.9rem; min-height: 3.2rem; border: 0; border-radius: 0.8rem; background: var(--red); color: #fff; font-size: 1.05rem; font-weight: 900; box-shadow: 0 0.25rem 0 rgb(0 0 0 / 0.2); }
+  .wide { width: 100%; }
+  .rank-h { margin: 0; font-size: 1.3rem; color: #fff; font-weight: 400; text-align: center; }
+  .ranking { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; padding: 0; list-style: none; text-align: left; }
+  .ranking li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0.7rem; border-radius: 0.6rem; background: #fff; font-weight: 700; }
+  .ranking li:nth-child(-n+3) .rank { color: var(--red); }
+  .ranking li.me { outline: 0.2rem solid var(--warn); }
+  .ranking .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ranking .pts { font-variant-numeric: tabular-nums; }
+  .game { position: fixed; inset: 0; z-index: 50; background: var(--navy); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .game canvas { display: block; }
+  .game-close { position: absolute; top: calc(0.5rem + env(safe-area-inset-top)); right: 0.5rem; width: 3rem; height: 3rem; border: 0; border-radius: 999px; background: rgb(0 0 0 / 0.35); color: #fff; font-size: 1.6rem; font-weight: 700; }
+  .game-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22rem, calc(100% - 2rem)); display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem; border-radius: 1.5rem; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 0.4rem 0 rgb(0 0 0 / 0.3); }
+  .game-title { margin: 0; font-size: 1.45rem; color: var(--navy); white-space: nowrap; }
+  .game-text { margin: 0; line-height: 1.5; }
+  .game-text.small { font-size: 0.9rem; color: #4a4a4a; }
+  .game-reason { margin: 0; font-family: "Yuji Syuku", ${SANS}; font-size: 1.6rem; color: var(--navy); }
+  .game-reason.done { font-size: 2.2rem; color: var(--red); }
+  .game-score { margin: 0; font-size: 3rem; font-weight: 900; color: var(--red); line-height: 1.1; }
+  .rank-form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding-top: 0.5rem; border-top: 2px dashed #d9cfbd; text-align: left; }
+  .rank-form label { grid-column: 1 / -1; font-size: 0.95rem; }
+  .rank-form input { font-size: 1.1rem; font-weight: 700; padding: 0.5rem 0.6rem; text-align: left; border-width: 2px; }
+  .secondary { border: 0; border-radius: 0.8rem; padding: 0 1rem; min-height: 3rem; background: var(--navy); color: #fff; font-weight: 900; }
+  .secondary:disabled { opacity: 0.5; }
+  .rank-msg { grid-column: 1 / -1; margin: 0; font-weight: 700; color: var(--navy); min-height: 1.2em; }
+
   @media (prefers-reduced-motion: reduce) {
-    .ukiwa.bob, .drift, .swimmer { animation: none; }
+    .ukiwa.bob, .drift, .swimmer, .game-fish, .cta { animation: none; }
+    .game-fish { transform: scaleX(-1); }
     .drop { display: none; }
     .water, .swimmer { transition: none; }
   }
@@ -214,13 +230,30 @@ export const PAGE_HTML = `<!doctype html>
       <div id="track" class="track" aria-hidden="true">
         <div id="water" class="water"></div>
         <span class="goal">受け取り口</span>
-        <div class="swimmer-lane"><img id="swimmer" class="swimmer" src="/brand/character.webp" alt="" width="320" height="320"></div>
+        <div class="swimmer-lane"><img id="swimmer" class="swimmer" src="/brand/taiyaki.webp" alt="" width="240" height="167"></div>
       </div>
+      <button id="mine-play" class="mine-play" type="button" hidden>待っている間に、ミニゲームであそぶ <span aria-hidden="true">▶</span></button>
       <button id="change" class="link" type="button">番号を変える</button>
     </div>
   </section>
 
   <p id="stale" hidden>しばらく情報が更新されていません。お店の呼び出し表示もご確認ください。</p>
+
+  <section class="game-card" aria-labelledby="game-h">
+    <div class="game-hero">
+      <img class="game-fish" src="/brand/taiyaki.webp" alt="" width="240" height="160">
+      <div>
+        <p class="kicker">待ち時間にあそぼう！</p>
+        <h2 id="game-h" class="brush">およげない？<br>たいやきくん</h2>
+      </div>
+    </div>
+    <button id="game-open" class="cta" type="button">ゲームであそぶ <span aria-hidden="true">▶</span></button>
+    <div class="ranking-box">
+      <h3 class="brush rank-h">${BRUSH_TEXT.ranking}</h3>
+      <ol id="ranking" class="ranking"></ol>
+      <p id="ranking-empty" class="hint" hidden>まだ記録がありません。1番乗りしよう！</p>
+    </div>
+  </section>
 
   <section aria-labelledby="ready-h">
     <h2 id="ready-h" class="pill brush">${BRUSH_TEXT.ready}</h2>
@@ -239,18 +272,14 @@ export const PAGE_HTML = `<!doctype html>
     <p id="avg" hidden></p>
   </section>
 
-  <section class="card menu" aria-labelledby="menu-h">
-    <h2 id="menu-h" class="brush">${BRUSH_TEXT.menu}</h2>
-    <div class="prices">
-      <p>1個 <b>${UNIT_PRICE}</b>円</p>
-      <p class="set">${SET_SIZE}個セットがお得！ <b>${SET_PRICE}</b>円</p>
-    </div>
-    <ul class="flavors">${flavorChips}</ul>
-    <p class="note">味はまぜてもOK。お支払いは金券（${TICKET_VALUE}円券）です</p>
-  </section>
-
   <p id="updated"></p>
 </main>
+<div id="game" class="game" hidden role="dialog" aria-modal="true" aria-labelledby="game-title">
+  <canvas id="game-canvas"></canvas>
+  <button id="game-close" class="game-close" type="button" aria-label="ゲームをとじる">×</button>
+  <div id="game-panel" class="game-panel" hidden></div>
+</div>
+<script src="/game.js" defer></script>
 <script>
 (function () {
   var T = ${JSON.stringify(BRUSH_TEXT)};
@@ -334,6 +363,7 @@ export const PAGE_HTML = `<!doctype html>
     splash(box, done);
     state.className = "state brush" + (done ? " done" : "") + (s === "notFound" || !s ? " plain" : "");
     $("track").hidden = s === "notFound" || !s;
+    $("mine-play").hidden = s !== "waiting";
 
     if (done) {
       state.textContent = T.done;
@@ -353,6 +383,7 @@ export const PAGE_HTML = `<!doctype html>
     }
 
     document.title = done ? "【できあがり！】" + BASE_TITLE : BASE_TITLE;
+    if (done && window.taiyakiGame) window.taiyakiGame.ready(myNumber);
     // 見ている間にできあがったら、震えて知らせる（対応している端末だけ）
     if (done && lastState === "waiting" && navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
     if (s) lastState = s;
@@ -433,6 +464,7 @@ export const PAGE_HTML = `<!doctype html>
     setNumber(input.value);
     refresh();
   });
+  $("mine-play").addEventListener("click", function () { $("game-open").click(); });
   $("change").addEventListener("click", function () {
     setNumber(null);
     document.title = BASE_TITLE;
@@ -441,6 +473,7 @@ export const PAGE_HTML = `<!doctype html>
   });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
 
+  window.taiyakiPage = { number: function () { return myNumber; } };
   setNumber(new URLSearchParams(location.search).get("n") || recall(KEY));
   refresh();
   setInterval(refresh, POLL_MS);

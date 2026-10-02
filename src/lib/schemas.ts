@@ -36,3 +36,10 @@ export const publicStatusSchema = z.object({
   // 古い public-sync（目安を送らない）からでも受け付ける
   secondsPerOrder: z.number().int().min(0).max(86400).nullable().default(null),
 });
+
+export const rankingSubmitSchema = z.object({
+  number: z.number().int().min(1).max(9999),
+  name: z.string().max(40), // 長さの本当の上限は normalizeName（10文字）で見る
+  score: z.number().int().min(0).max(100000),
+  playMs: z.number().int().min(0).max(60 * 60 * 1000),
+});
