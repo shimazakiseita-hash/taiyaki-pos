@@ -2,7 +2,7 @@
  * ミニゲーム「およげない？たいやきくん」と今日のランキング（お客さん向けページ用）
  * タップで少し浮かぶ。網（上）と岩（下）をよけ、浮き輪を集める。底に沈むか、ぶつかったら終わり。
  * 10個よけるごとにステージ（景色と仕掛け）が変わる。速さとすき間の狭さは、よけた数だけで決まり、ステージが一周しても戻らない。
- * アイテム：あんこだん（5秒間あんこを撃ってクラゲを倒せる）・あおいうきわ（1回だけ助かる）・あじのぐ（4しゅ集めるとボーナス）。
+ * アイテム：あんこだん（5秒間あんこを撃ってクラゲを倒せる）・あおいうきわ（1回だけ助かる）。
  * しんかい（クラゲが出る海）からは、クラゲがしびれだまを撃ってくる。
  * 自分の番号ができあがったら、ゲームを止めて知らせる（ページから taiyakiGame.ready() が呼ばれる）
  */
@@ -16,16 +16,8 @@
   var RING_POINTS = 3;
   var GOLD_POINTS = 10;
   var JELLY_POINTS = 5; // あんこだんでクラゲを倒した
-  var FLAVOR_POINTS = 2;
-  var COMPLETE_POINTS = 20; // あじのぐ 4しゅ コンプリート
   var GUN_SECONDS = 5;
   var SAFE_SECONDS = 1.2; // シールドで助かったあと、少しのあいだ当たらない
-  var FLAVORS = [
-    { id: "anko", label: "あ", color: "#9e3232", text: "#ffffff" },
-    { id: "custard", label: "カ", color: "#e3ae2f", text: "#1a1a1a" },
-    { id: "matcha", label: "抹", color: "#5a8a3a", text: "#ffffff" },
-    { id: "choco", label: "チ", color: "#6b4226", text: "#ffffff" },
-  ];
   var NAME_KEY = "taiyaki-name";
   var BEST_KEY = "taiyaki-best";
   var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -50,7 +42,7 @@
   var state = "closed"; // closed | title | ready（タップ待ち）| playing | over | done
   var player, obstacles, jellies, bubbles, fishes, popups, score, passed, startedAt, lastTime;
   var stageIndex, stageShownAt, blend, flashUntil;
-  var bullets, bolts, shield, safeUntil, gunUntil, nextShot, collected, nowT;
+  var bullets, bolts, shield, safeUntil, gunUntil, nextShot, nowT;
 
   function recall(key) { try { return localStorage.getItem(key); } catch { return null; } }
   function store(key, v) { try { localStorage.setItem(key, v); } catch {} }
@@ -123,7 +115,6 @@
     safeUntil = 0;
     gunUntil = 0;
     nextShot = 0;
-    collected = {};
     nowT = 0;
   }
 
@@ -131,13 +122,9 @@
   function rollItem() {
     var r = Math.random();
     if (r < 0.06) return { kind: "gold" };
-    if (r < 0.13) return { kind: "anko" };
+    // あんこだんはクラゲを倒すためのものなので、クラゲが出る海だけ（出ない海ではふつうの浮き輪に）
+    if (r < 0.13) return currentJelly() > 0 ? { kind: "anko" } : { kind: "ring" };
     if (r < 0.19) return { kind: "shield" };
-    if (r < 0.34) {
-      var missing = FLAVORS.filter(function (f) { return !collected[f.id]; });
-      var pool = missing.length ? missing : FLAVORS;
-      return { kind: "flavor", flavor: pool[Math.floor(Math.random() * pool.length)] };
-    }
     if (r < 0.62) return { kind: "ring" };
     return null;
   }
@@ -303,18 +290,6 @@
       ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2); ctx.stroke();
       drawAnko(x, y, 13);
-    } else if (it.kind === "flavor") {
-      var f = it.flavor;
-      ctx.fillStyle = f.color;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = f.text;
-      ctx.font = "800 16px 'M PLUS Rounded 1c', system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(f.label, x, y + 1);
-      ctx.textBaseline = "alphabetic";
     }
   }
 
@@ -337,23 +312,16 @@
     });
   }
 
-  /* 左上：あつめた あじ・シールド・あんこだんの のこり */
+  /* 左上：シールド・あんこだんの のこり */
   function drawHud(t) {
-    FLAVORS.forEach(function (f, i) {
-      var x = 22 + i * 26;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "rgba(255,255,255,0.85)";
-      ctx.fillStyle = collected[f.id] ? f.color : "rgba(255,255,255,0.15)";
-      ctx.beginPath(); ctx.arc(x, 28, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    });
-    if (shield) drawRing(30, 60, "#2f74d0", false, null);
+    if (shield) drawRing(30, 32, "#2f74d0", false, null);
     if (t < gunUntil) {
       var x0 = shield ? 64 : 30;
-      drawAnko(x0, 60, 9);
+      drawAnko(x0, 32, 9);
       ctx.fillStyle = "rgba(255,255,255,0.3)";
-      ctx.fillRect(x0 + 14, 56, 60, 8);
+      ctx.fillRect(x0 + 14, 28, 60, 8);
       ctx.fillStyle = "#ffd6a0";
-      ctx.fillRect(x0 + 14, 56, (60 * (gunUntil - t)) / GUN_SECONDS, 8);
+      ctx.fillRect(x0 + 14, 28, (60 * (gunUntil - t)) / GUN_SECONDS, 8);
     }
   }
 
@@ -464,17 +432,6 @@
     else if (it.kind === "gold") { score += GOLD_POINTS; popup("+" + GOLD_POINTS); if (navigator.vibrate) navigator.vibrate(30); }
     else if (it.kind === "anko") { gunUntil = nowT + GUN_SECONDS; nextShot = nowT; popup("あんこだん！"); }
     else if (it.kind === "shield") { shield = true; popup("シールド！"); }
-    else if (it.kind === "flavor") {
-      collected[it.flavor.id] = true;
-      score += FLAVOR_POINTS;
-      popup("+" + FLAVOR_POINTS);
-      if (FLAVORS.every(function (f) { return collected[f.id]; })) {
-        collected = {};
-        score += COMPLETE_POINTS;
-        popups.push({ text: "4しゅ コンプリート！ +" + COMPLETE_POINTS, x: W / 2, y: H * 0.4, life: 1.6 });
-        if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
-      }
-    }
   }
 
   function step(dt, t) {
@@ -616,7 +573,6 @@
     gold: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#f3d27a" stroke-width="2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#e3ae2f" stroke-width="7" stroke-dasharray="10.2 10.2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#fff" stroke-width="7" stroke-dasharray="10.2 10.2" stroke-dashoffset="10.2"/></svg>',
     shield: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#a0d2ff" stroke-width="2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#2f74d0" stroke-width="7" stroke-dasharray="10.2 10.2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#fff" stroke-width="7" stroke-dasharray="10.2 10.2" stroke-dashoffset="10.2"/></svg>',
     anko: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#ffd2aa" stroke-width="3"/><circle cx="20" cy="20" r="12" fill="#5b2a1f"/><circle cx="16" cy="16" r="3.5" fill="#fff" opacity=".45"/></svg>',
-    flavor: '<svg viewBox="0 0 96 40" aria-hidden="true"><circle cx="12" cy="20" r="10" fill="#9e3232"/><circle cx="36" cy="20" r="10" fill="#e3ae2f"/><circle cx="60" cy="20" r="10" fill="#5a8a3a"/><circle cx="84" cy="20" r="10" fill="#6b4226"/></svg>',
     bolt: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" fill="#ffe66b" opacity=".4"/><circle cx="20" cy="20" r="7" fill="#e3b800"/><path d="M28 12l5-5M28 28l5 5M10 20H3" stroke="#e3b800" stroke-width="2.5"/></svg>',
     avoid: '<svg viewBox="0 0 96 40" aria-hidden="true"><rect x="2" y="2" width="26" height="22" fill="#faf6ee" stroke="#7a869e" stroke-width="2"/><path d="M2 2l26 22M28 2L2 24M15 2v22M2 13h26" stroke="#7a869e" stroke-width="1.5"/><circle cx="8" cy="26" r="3" fill="#c8322b"/><circle cx="22" cy="26" r="3" fill="#c8322b"/><path d="M36 38v-18q0-8 8-8h6q8 0 8 8v18z" fill="#6b7488"/><path d="M74 20a10 10 0 0 1 20 0z" fill="#ffaadc"/><path d="M78 20q2 8 0 16M84 20q2 8 0 16M90 20q2 8 0 16" stroke="#ffaadc" stroke-width="2" fill="none"/></svg>',
   };
@@ -641,7 +597,6 @@
       legendRow(ICONS.ring, "うきわ <b>＋3</b>　きんは <b>＋10</b>"),
       legendRow(ICONS.anko, "あんこだん：クラゲを たおせる <b>＋5</b>"),
       legendRow(ICONS.shield, "あおい うきわ：1かい だけ セーフ"),
-      legendRow(ICONS.flavor, "4しゅの あじを あつめると <b>＋20</b>"),
       legendRow(ICONS.avoid, "あみ・いわ・クラゲは よけてね"),
       legendRow(ICONS.bolt, "しんかいから クラゲが しびれだまを うってくる！")
     );

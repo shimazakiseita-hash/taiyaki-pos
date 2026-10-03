@@ -34,7 +34,7 @@ export function containsNgWord(name: string): boolean {
 
 /**
  * 遊んだ時間に対してありえない点数を弾く。最高速で障害物が1秒に約1.5個、
- * 金の浮き輪10点・クラゲ5点・4しゅコンプリート20点も見込んで、1秒12点＋20点が上限
+ * 金の浮き輪10点・クラゲ5点も見込んで、1秒12点＋20点が上限（余裕をもたせている）
  */
 export function isPlausibleScore(score: number, playMs: number): boolean {
   return score >= 0 && playMs >= 0 && score <= Math.ceil((playMs / 1000) * 12) + 20;
