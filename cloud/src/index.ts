@@ -7,10 +7,12 @@ import { DurableObject } from "cloudflare:workers";
 import { lookupNumber, type PublicStatus } from "../../src/lib/publicStatus";
 import {
   RANKING_SIZE,
+  allowSubmission,
   containsNgWord,
   isPlausibleScore,
   jstDateKey,
   normalizeName,
+  playerTag,
   sortRanking,
   upsertBest,
   type RankingEntry,
@@ -25,23 +27,29 @@ type Env = {
 
 type StoredStatus = PublicStatus & { updatedAt: string };
 
-export type RankingRow = { rank: number; name: string; number: number; score: number };
+export type RankingRow = { rank: number; name: string; tag: string; score: number };
 export type SubmitResult = { ok: true; rank: number; top: RankingRow[] } | { ok: false; error: string };
 
 function toRows(entries: readonly RankingEntry[]): RankingRow[] {
-  return sortRanking(entries).map((e, i) => ({ rank: i + 1, name: e.name, number: e.number, score: e.score }));
+  return sortRanking(entries).map((e, i) => ({ rank: i + 1, name: e.name, tag: tagOf(e), score: e.score }));
+}
+
+/** 番号で登録していたころの記録（player がない）も表示・削除できるように */
+function tagOf(e: RankingEntry): string {
+  return e.player ? playerTag(e.player) : `n${(e as { number?: number }).number ?? ""}`;
 }
 
 /** 最新の呼び出し状況と、今日のランキングを持つ */
 export class StatusStore extends DurableObject<Env> {
+  /** 回線ごとの最近の登録時刻（連続登録を止めるため。消えても困らないのでメモリだけ） */
+  private submissions = new Map<string, number[]>();
+
   async read(): Promise<StoredStatus | null> {
     return (await this.ctx.storage.get<StoredStatus>("status")) ?? null;
   }
 
   async write(status: PublicStatus): Promise<void> {
-    // ランキングに参加できるのは、これまでに出た番号まで
-    const max = Math.max((await this.ctx.storage.get<number>("maxNumber")) ?? 0, ...status.ready, ...status.waiting);
-    await this.ctx.storage.put({ status: { ...status, updatedAt: new Date().toISOString() }, maxNumber: max });
+    await this.ctx.storage.put("status", { ...status, updatedAt: new Date().toISOString() });
   }
 
   private async board(): Promise<RankingEntry[]> {
@@ -52,18 +60,19 @@ export class StatusStore extends DurableObject<Env> {
     return toRows(await this.board()).slice(0, RANKING_SIZE);
   }
 
-  async submit(entry: RankingEntry): Promise<SubmitResult> {
-    const max = (await this.ctx.storage.get<number>("maxNumber")) ?? 0;
-    if (entry.number > max) return { ok: false, error: "その ばんごうの せいりけんは まだ でていないよ" };
+  async submit(entry: RankingEntry, ip: string): Promise<SubmitResult> {
+    const allowed = allowSubmission(this.submissions.get(ip) ?? [], Date.now());
+    this.submissions.set(ip, allowed.times);
+    if (!allowed.ok) return { ok: false, error: "すこし じかんを おいてから のせてね" };
     const board = upsertBest(await this.board(), entry);
     await this.ctx.storage.put(`ranking:${jstDateKey()}`, board);
     const rows = toRows(board);
-    return { ok: true, rank: rows.find((r) => r.number === entry.number)!.rank, top: rows.slice(0, RANKING_SIZE) };
+    return { ok: true, rank: rows.find((r) => r.tag === playerTag(entry.player))!.rank, top: rows.slice(0, RANKING_SIZE) };
   }
 
-  async remove(number: number): Promise<boolean> {
+  async remove(tag: string): Promise<boolean> {
     const board = await this.board();
-    const next = board.filter((e) => e.number !== number);
+    const next = board.filter((e) => tagOf(e) !== tag);
     await this.ctx.storage.put(`ranking:${jstDateKey()}`, next);
     return next.length < board.length;
   }
@@ -133,19 +142,20 @@ export default {
         // お客さん（子どもも）に見せるメッセージなので、ひらがなでやさしく
         const parsed = rankingSubmitSchema.safeParse(await readJson(request));
         if (!parsed.success) return json({ error: "形式が不正です" }, 400);
-        const { number, score, playMs } = parsed.data;
+        const { player, score, playMs } = parsed.data;
         const name = normalizeName(parsed.data.name);
         if (!name) return json({ error: "なまえは 1〜10もじに してね" }, 400);
         if (containsNgWord(name)) return json({ error: "その なまえは つかえないよ。べつの なまえに してね" }, 400);
         if (!isPlausibleScore(score, playMs)) return json({ error: "きろくを たしかめられなかったよ" }, 400);
-        const result = await store.submit({ number, name, score, at: new Date().toISOString() });
+        const ip = request.headers.get("CF-Connecting-IP") ?? "local";
+        const result = await store.submit({ player, name, score, at: new Date().toISOString() }, ip);
         return result.ok ? json(result) : json({ error: result.error }, 400);
       }
       if (request.method === "DELETE") {
         if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
-        const n = Number(url.searchParams.get("number"));
-        if (!Number.isInteger(n) || n < 1) return json({ error: "number を指定してください" }, 400);
-        return json({ removed: await store.remove(n) });
+        const tag = url.searchParams.get("tag") ?? "";
+        if (!/^[a-z0-9]{1,12}$/.test(tag)) return json({ error: "tag を指定してください" }, 400);
+        return json({ removed: await store.remove(tag) });
       }
       return json({ error: "許可されていないメソッドです" }, 405);
     }

@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  SUBMIT_LIMIT,
+  SUBMIT_WINDOW_MS,
+  allowSubmission,
   containsNgWord,
   isPlausibleScore,
   jstDateKey,
   normalizeName,
+  playerTag,
   sortRanking,
   upsertBest,
   type RankingEntry,
 } from "./ranking";
 import { rankingSubmitSchema } from "./schemas";
 
-const entry = (number: number, score: number, name = `${number}さん`, at = "2026-10-10T03:00:00.000Z"): RankingEntry => ({
-  number,
+const entry = (player: string, score: number, name = `${player}さん`, at = "2026-10-10T03:00:00.000Z"): RankingEntry => ({
+  player,
   name,
   score,
   at,
@@ -56,17 +60,22 @@ describe("isPlausibleScore", () => {
 });
 
 describe("upsertBest / sortRanking", () => {
-  it("番号ごとに最高点だけ残し、名前は最新にする", () => {
-    let board = upsertBest([], entry(3, 20, "あ"));
-    board = upsertBest(board, entry(3, 10, "い"));
-    expect(board).toEqual([entry(3, 20, "い")]);
-    board = upsertBest(board, entry(3, 30, "う", "2026-10-10T04:00:00.000Z"));
-    expect(board).toEqual([entry(3, 30, "う", "2026-10-10T04:00:00.000Z")]);
+  it("プレイヤーごとに最高点だけ残し、名前は最新にする", () => {
+    let board = upsertBest([], entry("aaaa1111", 20, "あ"));
+    board = upsertBest(board, entry("aaaa1111", 10, "い"));
+    expect(board).toEqual([entry("aaaa1111", 20, "い")]);
+    board = upsertBest(board, entry("aaaa1111", 30, "う", "2026-10-10T04:00:00.000Z"));
+    expect(board).toEqual([entry("aaaa1111", 30, "う", "2026-10-10T04:00:00.000Z")]);
+    expect(upsertBest(board, entry("bbbb2222", 5))).toHaveLength(2);
   });
 
   it("点数の高い順、同点なら先に出した人が上", () => {
-    const board = [entry(1, 10, "a", "2026-10-10T03:02:00.000Z"), entry(2, 30), entry(3, 10, "c", "2026-10-10T03:01:00.000Z")];
-    expect(sortRanking(board).map((e) => e.number)).toEqual([2, 3, 1]);
+    const board = [entry("p1", 10, "a", "2026-10-10T03:02:00.000Z"), entry("p2", 30), entry("p3", 10, "c", "2026-10-10T03:01:00.000Z")];
+    expect(sortRanking(board).map((e) => e.player)).toEqual(["p2", "p3", "p1"]);
+  });
+
+  it("表示用のIDは先頭6文字だけ", () => {
+    expect(playerTag("abcdef123456")).toBe("abcdef");
   });
 });
 
@@ -78,9 +87,22 @@ describe("jstDateKey", () => {
 });
 
 describe("rankingSubmitSchema", () => {
-  it("番号・名前・点数・遊んだ時間を受け付ける", () => {
-    expect(rankingSubmitSchema.safeParse({ number: 12, name: "たい", score: 5, playMs: 20000 }).success).toBe(true);
-    expect(rankingSubmitSchema.safeParse({ number: 0, name: "たい", score: 5, playMs: 20000 }).success).toBe(false);
-    expect(rankingSubmitSchema.safeParse({ number: 1, name: "x".repeat(41), score: 5, playMs: 20000 }).success).toBe(false);
+  it("プレイヤーID・名前・点数・遊んだ時間を受け付ける（整理券の番号はいらない）", () => {
+    expect(rankingSubmitSchema.safeParse({ player: "a1b2c3d4e5f6", name: "たい", score: 5, playMs: 20000 }).success).toBe(true);
+    expect(rankingSubmitSchema.safeParse({ player: "short", name: "たい", score: 5, playMs: 20000 }).success).toBe(false);
+    expect(rankingSubmitSchema.safeParse({ player: "ABCDEF123456", name: "たい", score: 5, playMs: 20000 }).success).toBe(false);
+    expect(rankingSubmitSchema.safeParse({ player: "a1b2c3d4e5f6", name: "x".repeat(41), score: 5, playMs: 20000 }).success).toBe(false);
+  });
+});
+
+describe("allowSubmission", () => {
+  it("10分に20回までは通し、それを超えると断る。古い登録は数えない", () => {
+    const now = 1_000_000_000;
+    const full = Array.from({ length: SUBMIT_LIMIT }, (_, i) => now - i * 1000);
+    expect(allowSubmission(full.slice(1), now).ok).toBe(true);
+    expect(allowSubmission(full, now).ok).toBe(false);
+    const old = full.map((t) => t - SUBMIT_WINDOW_MS);
+    const r = allowSubmission(old, now);
+    expect(r).toEqual({ ok: true, times: [now] });
   });
 });

@@ -38,7 +38,7 @@ export const publicStatusSchema = z.object({
 });
 
 export const rankingSubmitSchema = z.object({
-  number: z.number().int().min(1).max(9999),
+  player: z.string().regex(/^[a-z0-9]{8,32}$/), // スマホごとのID
   name: z.string().max(40), // 長さの本当の上限は normalizeName（10文字）で見る
   score: z.number().int().min(0).max(100000),
   playMs: z.number().int().min(0).max(60 * 60 * 1000),

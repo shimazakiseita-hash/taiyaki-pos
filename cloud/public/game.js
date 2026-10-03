@@ -4,6 +4,7 @@
  * 10個よけるごとにステージ（景色と仕掛け）が変わる。速さとすき間の狭さは、よけた数だけで決まり、ステージが一周しても戻らない。
  * アイテム：あんこだん（5秒間あんこを撃ってクラゲを倒せる）・あおいうきわ（1回だけ助かる）。
  * しんかい（クラゲが出る海）からは、クラゲがしびれだまを撃ってくる。
+ * あらしのうみを10個よけきると、ボスクラゲが出る（あんこだん撃ち放題で戦う。20秒で倒せないと逃げられる）。
  * 自分の番号ができあがったら、ゲームを止めて知らせる（ページから taiyakiGame.ready() が呼ばれる）
  */
 (function () {
@@ -18,8 +19,13 @@
   var JELLY_POINTS = 5; // あんこだんでクラゲを倒した
   var GUN_SECONDS = 5;
   var SAFE_SECONDS = 1.2; // シールドで助かったあと、少しのあいだ当たらない
+  var BOSS_R = 46;
+  var BOSS_HIT_POINTS = 2; // ボスにあんこだんが1発当たるごと
+  var BOSS_POINTS = 30; // ボスを倒した
+  var BOSS_SECONDS = 20; // これを過ぎると逃げられる
   var NAME_KEY = "taiyaki-name";
   var BEST_KEY = "taiyaki-best";
+  var PLAYER_KEY = "taiyaki-player";
   var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ステージごとの景色と仕掛け。move はすき間が上下に動く幅、jelly はクラゲが出る確率 */
@@ -43,10 +49,21 @@
   var player, obstacles, jellies, bubbles, fishes, popups, score, passed, startedAt, lastTime;
   var stageIndex, stageShownAt, blend, flashUntil;
   var bullets, bolts, shield, safeUntil, gunUntil, nextShot, nowT;
+  var boss, bannerText, bannerAt;
 
   function recall(key) { try { return localStorage.getItem(key); } catch { return null; } }
   function store(key, v) { try { localStorage.setItem(key, v); } catch {} }
-  function myNumber() { return window.taiyakiPage ? window.taiyakiPage.number() : null; }
+  /* ランキング用の、このスマホのID（整理券がなくても登録できる。保存できない端末ではページを開いている間だけ） */
+  var myPlayer = (function () {
+    var id = recall(PLAYER_KEY);
+    if (id && /^[a-z0-9]{8,32}$/.test(id)) return id;
+    var bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    id = Array.prototype.map.call(bytes, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+    store(PLAYER_KEY, id);
+    return id;
+  })();
+  var myTag = myPlayer.slice(0, 6);
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -116,6 +133,9 @@
     gunUntil = 0;
     nextShot = 0;
     nowT = 0;
+    boss = null;
+    bannerText = "";
+    bannerAt = -10;
   }
 
   /* すき間に浮かべるもの（なにもないこともある） */
@@ -321,7 +341,7 @@
       ctx.fillStyle = "rgba(255,255,255,0.3)";
       ctx.fillRect(x0 + 14, 28, 60, 8);
       ctx.fillStyle = "#ffd6a0";
-      ctx.fillRect(x0 + 14, 28, (60 * (gunUntil - t)) / GUN_SECONDS, 8);
+      ctx.fillRect(x0 + 14, 28, 60 * Math.min(1, (gunUntil - t) / GUN_SECONDS), 8);
     }
   }
 
@@ -338,6 +358,41 @@
       ctx.quadraticCurveTo(tx + Math.sin(t * 5 + i) * 4, y + 14, tx, y + 24);
     }
     ctx.stroke();
+  }
+
+  function drawBoss(t) {
+    if (!boss) return;
+    var x = boss.x, y = boss.y, r = BOSS_R;
+    ctx.save();
+    if (boss.defeated) ctx.globalAlpha = Math.max(0, boss.fade / 1.2);
+    // 足（ゆらゆら）
+    ctx.strokeStyle = "rgba(205,140,230,0.8)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (var i = -3; i <= 3; i++) {
+      var tx = x + i * 11;
+      ctx.moveTo(tx, y + 6);
+      ctx.bezierCurveTo(tx + Math.sin(t * 4 + i) * 10, y + 30, tx - Math.sin(t * 4 + i) * 10, y + 50, tx + Math.sin(t * 3 + i) * 6, y + 72);
+    }
+    ctx.stroke();
+    // かさ
+    var g = ctx.createRadialGradient(x - 14, y - 22, 6, x, y - 10, r);
+    g.addColorStop(0, t < boss.hitUntil ? "#ffffff" : "#f6c7ff");
+    g.addColorStop(1, t < boss.hitUntil ? "#ffd6f0" : "#b06ad8");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.quadraticCurveTo(x + r, y + 12, x, y + 10); ctx.quadraticCurveTo(x - r, y + 12, x - r, y); ctx.fill();
+    // かんむり
+    ctx.fillStyle = "#e3ae2f";
+    ctx.beginPath();
+    ctx.moveTo(x - 20, y - r + 4); ctx.lineTo(x - 20, y - r - 16); ctx.lineTo(x - 10, y - r - 6); ctx.lineTo(x, y - r - 20);
+    ctx.lineTo(x + 10, y - r - 6); ctx.lineTo(x + 20, y - r - 16); ctx.lineTo(x + 20, y - r + 4); ctx.fill();
+    // おこった目
+    ctx.fillStyle = "#3a1a48";
+    ctx.beginPath(); ctx.arc(x - 15, y - 14, 5, 0, Math.PI * 2); ctx.arc(x + 15, y - 14, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#3a1a48";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x - 24, y - 26); ctx.lineTo(x - 9, y - 20); ctx.moveTo(x + 24, y - 26); ctx.lineTo(x + 9, y - 20); ctx.stroke();
+    ctx.restore();
   }
 
   function drawPlayer(t) {
@@ -375,6 +430,7 @@
       if (o.item && !o.item.taken) drawItem(o.item, o.x + OBSTACLE_W / 2, (o.top + o.bottom) / 2, t);
     });
     jellies.forEach(function (j) { drawJelly(j, t); });
+    drawBoss(t);
     drawShots(t);
     drawPlayer(t);
     popups.forEach(function (p) { drawText(p.text, p.x, p.y, 26, Math.max(0, p.life)); });
@@ -393,6 +449,18 @@
       drawText(String(score), W / 2, 76, 44, 1);
       var since = t - stageShownAt;
       if (since < 2) drawText("ステージ" + (stageIndex + 1) + "　" + stageLabel(), W / 2, H * 0.28, 26, Math.min(1, 2 - since));
+      var bannerSince = t - bannerAt;
+      if (bannerSince < 2.2) drawText(bannerText, W / 2, H * 0.24, 26, Math.min(1, 2.2 - bannerSince));
+      if (boss && !boss.defeated && !boss.leaving) {
+        // ボスの たいりょく
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(W / 2 - 90, 92, 180, 12);
+        ctx.fillStyle = "#e05ad0";
+        ctx.fillRect(W / 2 - 90, 92, (180 * boss.hp) / boss.maxHp, 12);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(W / 2 - 90, 92, 180, 12);
+      }
     }
   }
 
@@ -434,6 +502,61 @@
     else if (it.kind === "shield") { shield = true; popup("シールド！"); }
   }
 
+  function banner(text, t) { bannerText = text; bannerAt = t; }
+
+  function advanceStage(t) {
+    stageIndex++;
+    stageShownAt = t;
+    blend = 0;
+  }
+
+  /* ボスクラゲ：一周ごとに体力が増え、攻撃も速くなる */
+  function startBoss(t) {
+    var hp = 8 + lap() * 4;
+    boss = { x: W + 80, y: H * 0.42, hp: hp, maxHp: hp, enteredAt: t, nextAttack: t + 2.4, attacks: 0, hitUntil: 0, leaving: false, defeated: false, fade: 0 };
+    gunUntil = Infinity; // ボス戦は あんこだん うちほうだい
+    nextShot = t;
+    banner("ボスクラゲ あらわる！", t);
+    if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+  }
+
+  function bossAttack() {
+    boss.attacks++;
+    if (boss.attacks % 2 === 1) {
+      // しびれだまを 3方向に
+      var ax = player.x - boss.x, ay = player.y - boss.y, base = Math.atan2(ay, ax);
+      [-0.3, 0, 0.3].forEach(function (d) {
+        bolts.push({ x: boss.x - 30, y: boss.y, vx: Math.cos(base + d) * 170, vy: Math.sin(base + d) * 170 });
+      });
+    } else {
+      // こクラゲを 2ひき
+      [-34, 34].forEach(function (d) {
+        jellies.push({ x: boss.x - 40, y0: boss.y + d, phase: Math.random() * 6, r: 12, willFire: false, fired: true });
+      });
+    }
+  }
+
+  function updateBoss(dt, t) {
+    if (boss.defeated) {
+      boss.y += 90 * dt;
+      boss.fade -= dt;
+      if (boss.fade <= 0) { boss = null; advanceStage(t); }
+      return false;
+    }
+    if (boss.leaving) {
+      boss.x += 240 * dt;
+      if (boss.x > W + 100) { boss = null; advanceStage(t); }
+      return false;
+    }
+    var bt = t - boss.enteredAt;
+    boss.x += (W * 0.76 - boss.x) * Math.min(1, dt * 2);
+    boss.y = H * 0.42 + Math.sin(bt * 1.3) * H * 0.2;
+    if (t >= boss.nextAttack) { bossAttack(); boss.nextAttack = t + Math.max(0.9, 1.5 - lap() * 0.15); }
+    if (bt > BOSS_SECONDS) { boss.leaving = true; gunUntil = t; banner("にげられた…", t); return false; }
+    var cx = player.x - boss.x, cy = player.y - boss.y, cr = BOSS_R * 0.75 + player.r * 0.7;
+    return cx * cx + cy * cy < cr * cr && hit("ボスに ぶつかった…");
+  }
+
   function step(dt, t) {
     if (Math.random() < dt * 3) bubbles.push({ x: Math.random() * W, y: FLOOR, r: 2 + Math.random() * 4 });
     bubbles.forEach(function (b) { b.y -= 40 * dt; });
@@ -464,7 +587,7 @@
 
     var speed = currentSpeed();
     var last = obstacles[obstacles.length - 1];
-    if (!last || last.x < W - Math.max(190, W * 0.55)) spawn();
+    if (!boss && (!last || last.x < W - Math.max(190, W * 0.55))) spawn(); // ボス戦のあいだは網と岩を出さない
     for (var i = 0; i < obstacles.length; i++) {
       var o = obstacles[i];
       o.x -= speed * dt;
@@ -482,12 +605,13 @@
         passed++;
         score++;
         if (passed % PER_STAGE === 0) {
-          stageIndex++;
-          stageShownAt = t;
-          blend = 0;
+          // あらしのうみを よけきったら ボス。倒すか逃げられたら次の周へ
+          if ((stageIndex + 1) % STAGES.length === 0) startBoss(t);
+          else advanceStage(t);
         }
       }
     }
+    if (boss && updateBoss(dt, t)) return;
     for (var k = 0; k < jellies.length; k++) {
       var j = jellies[k];
       j.x -= speed * dt;
@@ -521,6 +645,24 @@
           je.gone = bu.gone = true;
           score += JELLY_POINTS;
           popup("+" + JELLY_POINTS, je.x, jellyY(je, t) - 10);
+        }
+      }
+      if (!bu.gone && boss && !boss.leaving && !boss.defeated) {
+        var kx = bu.x - boss.x, ky = bu.y - (boss.y - 8);
+        if (kx * kx + ky * ky < (BOSS_R + 6) * (BOSS_R + 6)) {
+          bu.gone = true;
+          boss.hp--;
+          boss.hitUntil = t + 0.12;
+          score += BOSS_HIT_POINTS;
+          popup("+" + BOSS_HIT_POINTS, boss.x - 20, boss.y - 60);
+          if (boss.hp <= 0) {
+            boss.defeated = true;
+            boss.fade = 1.2;
+            gunUntil = t;
+            score += BOSS_POINTS;
+            banner("ボスを やっつけた！ +" + BOSS_POINTS, t);
+            if (navigator.vibrate) navigator.vibrate([80, 60, 80]);
+          }
         }
       }
       for (var n = 0; n < bolts.length && !bu.gone; n++) {
@@ -574,6 +716,7 @@
     shield: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#a0d2ff" stroke-width="2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#2f74d0" stroke-width="7" stroke-dasharray="10.2 10.2"/><circle cx="20" cy="20" r="13" fill="none" stroke="#fff" stroke-width="7" stroke-dasharray="10.2 10.2" stroke-dashoffset="10.2"/></svg>',
     anko: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#ffd2aa" stroke-width="3"/><circle cx="20" cy="20" r="12" fill="#5b2a1f"/><circle cx="16" cy="16" r="3.5" fill="#fff" opacity=".45"/></svg>',
     bolt: '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" fill="#ffe66b" opacity=".4"/><circle cx="20" cy="20" r="7" fill="#e3b800"/><path d="M28 12l5-5M28 28l5 5M10 20H3" stroke="#e3b800" stroke-width="2.5"/></svg>',
+    boss: '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M14 8V2l3 4 3-5 3 5 3-4v6z" fill="#e3ae2f"/><path d="M4 24a16 16 0 0 1 32 0q0 3-16 3T4 24z" fill="#c07ae0"/><circle cx="14" cy="18" r="2.2" fill="#3a1a48"/><circle cx="26" cy="18" r="2.2" fill="#3a1a48"/><path d="M10 27q2 6 0 11M16 27q2 6 0 11M24 27q2 6 0 11M30 27q2 6 0 11" stroke="#c07ae0" stroke-width="2" fill="none"/></svg>',
     avoid: '<svg viewBox="0 0 96 40" aria-hidden="true"><rect x="2" y="2" width="26" height="22" fill="#faf6ee" stroke="#7a869e" stroke-width="2"/><path d="M2 2l26 22M28 2L2 24M15 2v22M2 13h26" stroke="#7a869e" stroke-width="1.5"/><circle cx="8" cy="26" r="3" fill="#c8322b"/><circle cx="22" cy="26" r="3" fill="#c8322b"/><path d="M36 38v-18q0-8 8-8h6q8 0 8 8v18z" fill="#6b7488"/><path d="M74 20a10 10 0 0 1 20 0z" fill="#ffaadc"/><path d="M78 20q2 8 0 16M84 20q2 8 0 16M90 20q2 8 0 16" stroke="#ffaadc" stroke-width="2" fill="none"/></svg>',
   };
 
@@ -598,7 +741,8 @@
       legendRow(ICONS.anko, "あんこだん：クラゲを たおせる <b>＋5</b>"),
       legendRow(ICONS.shield, "あおい うきわ：1かい だけ セーフ"),
       legendRow(ICONS.avoid, "あみ・いわ・クラゲは よけてね"),
-      legendRow(ICONS.bolt, "しんかいから クラゲが しびれだまを うってくる！")
+      legendRow(ICONS.bolt, "しんかいから クラゲが しびれだまを うってくる！"),
+      legendRow(ICONS.boss, "あらしのうみの さいごに ボスクラゲ！ あんこだんで やっつけろ <b>＋30</b>")
     );
     showPanel([
       h,
@@ -630,9 +774,7 @@
       el("p", "game-text small", "ステージ" + (stageIndex + 1) + "（" + stageLabel() + "）まで いったよ"),
       el("p", "game-text small", "じこベスト " + best + "てん"),
     ];
-    var n = myNumber();
-    if (n && score > 0) items.push(rankForm(n, score, playMs));
-    else if (!n) items.push(el("p", "game-text small", "ページの うえで ばんごうを いれると、ランキングに のれるよ"));
+    if (score > 0) items.push(rankForm(score, playMs));
     items.push(button("もういっかい！", "primary wide", start), button("とじる", "link", close));
     showPanel(items);
   }
@@ -646,9 +788,9 @@
     return "ドンマイ！ もういっかい いってみよう";
   }
 
-  function rankForm(n, s, playMs) {
+  function rankForm(s, playMs) {
     var form = el("form", "rank-form");
-    var label = el("label", "", "ランキングに のせる（" + n + "ばん）");
+    var label = el("label", "", "ランキングに のせる");
     label.htmlFor = "rank-name";
     var input = el("input");
     input.id = "rank-name";
@@ -669,7 +811,7 @@
       fetch("/api/ranking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ number: n, name: input.value, score: s, playMs: playMs }),
+        body: JSON.stringify({ player: myPlayer, name: input.value, score: s, playMs: playMs }),
       })
         .then(function (res) { return res.json(); })
         .then(function (data) {
@@ -717,7 +859,7 @@
     ol.textContent = "";
     top.forEach(function (r) {
       var li = el("li");
-      if (r.number === myNumber()) li.className = "me";
+      if (r.tag === myTag) li.className = "me";
       li.append(el("span", "rank", r.rank + "い"), el("span", "name", r.name), el("span", "pts", r.score + "てん"));
       ol.appendChild(li);
     });
