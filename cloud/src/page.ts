@@ -191,18 +191,18 @@ export const PAGE_HTML = `<!doctype html>
   .game { position: fixed; inset: 0; z-index: 50; background: var(--navy); touch-action: none; user-select: none; -webkit-user-select: none; }
   .game canvas { display: block; }
   .game-close { position: absolute; top: calc(0.5rem + env(safe-area-inset-top)); right: 0.5rem; width: 3rem; height: 3rem; border: 0; border-radius: 999px; background: rgb(0 0 0 / 0.35); color: #fff; font-size: 1.6rem; font-weight: 700; }
-  .game-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22rem, calc(100% - 2rem)); display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem; border-radius: 1.5rem; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 0.4rem 0 rgb(0 0 0 / 0.3); }
+  .game-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(22rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem; border-radius: 1.5rem; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 0.4rem 0 rgb(0 0 0 / 0.3); }
   .game-title { margin: 0; font-size: 1.4rem; color: var(--navy); white-space: nowrap; }
   .game-text { margin: 0; line-height: 1.5; }
   .game-text.small { font-size: 0.9rem; color: #4a4a4a; }
   .game-reason { margin: 0; font-size: 1.5rem; color: var(--navy); }
   .game-cheer { margin: 0; font-size: 1.05rem; color: var(--red); }
-  .legend { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 0.7rem 0.8rem; list-style: none; border-radius: 1rem; background: #fff; text-align: left; }
+  .legend { display: flex; flex-direction: column; gap: 0.35rem; margin: 0; padding: 0.7rem 0.8rem; list-style: none; border-radius: 1rem; background: #fff; text-align: left; }
   .legend-row { display: flex; align-items: center; gap: 0.7rem; }
   .legend-pic { display: flex; justify-content: center; width: 4.2rem; flex-shrink: 0; }
   .legend-pic svg { height: 2.1rem; width: auto; }
-  .legend-text { font-size: 1rem; line-height: 1.35; }
-  .legend-text b { color: var(--red); }
+  .legend-text { font-size: 0.92rem; line-height: 1.35; }
+  .legend-text b { color: var(--red); white-space: nowrap; }
   .game-reason.done { font-size: 2.2rem; color: var(--red); }
   .game-score { margin: 0; font-size: 3rem; color: var(--red); line-height: 1.1; }
   .rank-form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding-top: 0.5rem; border-top: 2px dashed #d9cfbd; text-align: left; }

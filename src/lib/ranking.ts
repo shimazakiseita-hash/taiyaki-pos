@@ -32,9 +32,12 @@ export function containsNgWord(name: string): boolean {
   return NG_WORDS.some((w) => key.includes(w));
 }
 
-/** 遊んだ時間に対してありえない点数を弾く（最高速で障害物が1秒に約1.5個、金の浮き輪10点も見込んで1秒8点が上限） */
+/**
+ * 遊んだ時間に対してありえない点数を弾く。最高速で障害物が1秒に約1.5個、
+ * 金の浮き輪10点・クラゲ5点・4しゅコンプリート20点も見込んで、1秒12点＋20点が上限
+ */
 export function isPlausibleScore(score: number, playMs: number): boolean {
-  return score >= 0 && playMs >= 0 && score <= Math.ceil((playMs / 1000) * 8) + 10;
+  return score >= 0 && playMs >= 0 && score <= Math.ceil((playMs / 1000) * 12) + 20;
 }
 
 /** 番号ごとに1件。点数が上がったときだけ記録を更新し、名前はいつでも最新にする */

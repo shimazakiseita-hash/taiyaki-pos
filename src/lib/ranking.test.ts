@@ -48,8 +48,8 @@ describe("containsNgWord", () => {
 describe("isPlausibleScore", () => {
   it("遊んだ時間に見合う点数だけ通す", () => {
     expect(isPlausibleScore(40, 30_000)).toBe(true);
-    expect(isPlausibleScore(250, 30_000)).toBe(true);
-    expect(isPlausibleScore(251, 30_000)).toBe(false);
+    expect(isPlausibleScore(380, 30_000)).toBe(true);
+    expect(isPlausibleScore(381, 30_000)).toBe(false);
     expect(isPlausibleScore(500, 30_000)).toBe(false);
     expect(isPlausibleScore(-1, 30_000)).toBe(false);
   });
