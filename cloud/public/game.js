@@ -769,10 +769,10 @@
 
     var items = [
       el("p", "game-reason", reason),
-      el("p", "game-score", score + "てん"),
+      el("p", "game-score", score + "点"),
       el("p", "game-cheer", cheer(score, previousBest)),
       el("p", "game-text small", "ステージ" + (stageIndex + 1) + "（" + stageLabel() + "）まで いったよ"),
-      el("p", "game-text small", "じこベスト " + best + "てん"),
+      el("p", "game-text small", "じこベスト " + best + "点"),
     ];
     if (score > 0) items.push(rankForm(score, playMs));
     items.push(button("もういっかい！", "primary wide", start), button("とじる", "link", close));
@@ -782,7 +782,7 @@
   /* ひとこと（子どもにも大人にも、ちょっとうれしい・くやしい言葉） */
   function cheer(s, previousBest) {
     if (previousBest > 0 && s > previousBest) return "じこベスト こうしん！ すごい！";
-    if (previousBest > 0 && previousBest - s <= 5) return "おしい！ あと " + (previousBest - s + 1) + "てんで じこベスト";
+    if (previousBest > 0 && previousBest - s <= 5) return "おしい！ あと " + (previousBest - s + 1) + "点で じこベスト";
     if (s >= 50) return "うまい！ まるで およげるみたい";
     if (s >= 10) return "ナイス！ そのちょうし";
     return "ドンマイ！ もういっかい いってみよう";
@@ -816,7 +816,7 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (data.error) { msg.textContent = data.error; send.disabled = false; return; }
-          msg.textContent = "のせたよ！ いま " + data.rank + "い だよ";
+          msg.textContent = "のせたよ！ いま " + data.rank + "位 だよ";
           renderRanking(data.top);
         })
         .catch(function () { msg.textContent = "つうしん できなかったよ。もういちど おしてね"; send.disabled = false; });
@@ -860,7 +860,7 @@
     top.forEach(function (r) {
       var li = el("li");
       if (r.tag === myTag) li.className = "me";
-      li.append(el("span", "rank", r.rank + "い"), el("span", "name", r.name), el("span", "pts", r.score + "てん"));
+      li.append(el("span", "rank", r.rank + "位"), el("span", "name", r.name), el("span", "pts", r.score + "点"));
       ol.appendChild(li);
     });
     document.getElementById("ranking-empty").hidden = top.length > 0;
