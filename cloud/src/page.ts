@@ -183,7 +183,7 @@ export const PAGE_HTML = `<!doctype html>
   .wide { width: 100%; }
   .rank-h { margin: 0; font-size: 1.2rem; color: #fff; text-align: center; }
   .ranking { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; padding: 0; list-style: none; text-align: left; }
-  .ranking li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0.7rem; border-radius: 0.6rem; background: #fff; font-weight: 700; }
+  .ranking li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0.7rem; border-radius: 0.6rem; background: #fff; color: var(--ink); font-weight: 700; } /* 赤いカードの中なので文字色を明示（白地に白文字にならないように） */
   .ranking li:nth-child(-n+3) .rank { color: var(--red); }
   .ranking li.me { outline: 0.2rem solid var(--warn); }
   .ranking .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
