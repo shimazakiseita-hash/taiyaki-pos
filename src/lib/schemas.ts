@@ -43,3 +43,12 @@ export const rankingSubmitSchema = z.object({
   score: z.number().int().min(0).max(100000),
   playMs: z.number().int().min(0).max(60 * 60 * 1000),
 });
+
+/** お客さん向けページの設定：営業終了の表示と、寮祭当日（ランキングの「寮祭の日」）の日付 */
+export const siteConfigSchema = z.object({
+  closed: z.boolean(),
+  eventDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+});

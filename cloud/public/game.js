@@ -64,6 +64,8 @@
     return id;
   })();
   var myTag = myPlayer.slice(0, 6);
+  var board = "today"; // ランキングのタブ：today（きょう）・all（れきだい）・event（寮祭の日）
+  var configured = false;
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -816,8 +818,8 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (data.error) { msg.textContent = data.error; send.disabled = false; return; }
-          msg.textContent = "のせたよ！ いま " + data.rank + "位 だよ";
-          renderRanking(data.top);
+          msg.textContent = "のせたよ！ きょう " + data.rank + "位 ／ れきだい " + data.allRank + "位";
+          refreshRanking();
         })
         .catch(function () { msg.textContent = "つうしん できなかったよ。もういちど おしてね"; send.disabled = false; });
     });
@@ -866,8 +868,25 @@
     document.getElementById("ranking-empty").hidden = top.length > 0;
   }
 
+  function selectBoard(next) {
+    board = next;
+    document.querySelectorAll(".rank-tabs [data-board]").forEach(function (b) {
+      b.setAttribute("aria-selected", String(b.getAttribute("data-board") === board));
+    });
+    refreshRanking();
+  }
+
+  /* ページの設定：寮祭の日付があれば「寮祭の日」タブを出す。営業終了後は、さいしょは「れきだい」を見せる */
+  function config(c) {
+    var eventTab = document.querySelector('.rank-tabs [data-board="event"]');
+    eventTab.hidden = !c.eventDate;
+    if (!c.eventDate && board === "event") selectBoard("today");
+    if (!configured && c.closed) selectBoard("all");
+    configured = true;
+  }
+
   function refreshRanking() {
-    fetch("/api/ranking", { cache: "no-store" })
+    fetch("/api/ranking?board=" + board, { cache: "no-store" })
       .then(function (res) { return res.json(); })
       .then(function (data) { renderRanking(data.top || []); })
       .catch(function () {});
@@ -885,7 +904,11 @@
     if (document.hidden && state === "playing") finish("ひとやすみ…");
   });
 
-  window.taiyakiGame = { ready: ready };
+  document.querySelectorAll(".rank-tabs [data-board]").forEach(function (b) {
+    b.addEventListener("click", function () { selectBoard(b.getAttribute("data-board")); });
+  });
+
+  window.taiyakiGame = { ready: ready, config: config };
   refreshRanking();
   setInterval(function () { if (state === "closed") refreshRanking(); }, 30000);
 })();

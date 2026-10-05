@@ -182,6 +182,13 @@ export const PAGE_HTML = `<!doctype html>
   .mine-play { width: 100%; margin-top: 0.9rem; min-height: 3.2rem; border: 0; border-radius: 0.8rem; background: var(--red); color: #fff; font-size: 1.05rem; font-weight: 900; box-shadow: 0 0.25rem 0 rgb(0 0 0 / 0.2); }
   .wide { width: 100%; }
   .rank-h { margin: 0; font-size: 1.2rem; color: #fff; text-align: center; }
+  .rank-tabs { display: flex; gap: 0.35rem; }
+  .rank-tabs button { flex: 1; min-height: 2.6rem; border: 2px solid rgb(255 255 255 / 0.6); border-radius: 999px; background: transparent; color: #fff; font: inherit; font-size: 0.95rem; }
+  .rank-tabs button[aria-selected="true"] { background: #fff; color: var(--red); border-color: #fff; }
+  .closed { display: flex; flex-direction: column; gap: 0.6rem; text-align: center; }
+  .closed h2 { margin: 0; font-size: 1.55rem; color: var(--red); white-space: nowrap; }
+  .closed p { margin: 0; font-size: 1.1rem; font-weight: 700; line-height: 1.6; }
+  .closed .closed-game { font-size: 1rem; color: var(--navy); }
   .ranking { display: flex; flex-direction: column; gap: 0.3rem; margin: 0; padding: 0; list-style: none; text-align: left; }
   .ranking li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.5rem; align-items: center; padding: 0.35rem 0.7rem; border-radius: 0.6rem; background: #fff; color: var(--ink); font-weight: 700; } /* 赤いカードの中なので文字色を明示（白地に白文字にならないように） */
   .ranking li:nth-child(-n+3) .rank { color: var(--red); }
@@ -227,6 +234,12 @@ export const PAGE_HTML = `<!doctype html>
     <h1 class="brush">${BRUSH_TEXT.title}</h1>
   </header>
 
+  <section id="closed" class="card closed" hidden>
+    <h2 class="brush">${BRUSH_TEXT.thanks}</h2>
+    <p>寮祭での営業は終了しました。<br>たくさんのご来店、<br>ありがとうございました！</p>
+    <p class="maru closed-game">ミニゲームは これからも あそべるよ。<br>きろくを のばしてね！</p>
+  </section>
+
   <section id="mine" class="card" aria-label="あなたの番号">
     <form id="form">
       <label for="n">あなたの番号</label>
@@ -267,13 +280,18 @@ export const PAGE_HTML = `<!doctype html>
     </div>
     <button id="game-open" class="cta" type="button">ゲームで あそぶ <span aria-hidden="true">▶</span></button>
     <div class="ranking-box">
-      <h3 class="maru rank-h">きょうの ランキング</h3>
+      <h3 class="maru rank-h">ランキング</h3>
+      <div class="rank-tabs" role="tablist" aria-label="ランキングの しゅるい">
+        <button type="button" role="tab" data-board="today" aria-selected="true">きょう</button>
+        <button type="button" role="tab" data-board="all" aria-selected="false">れきだい</button>
+        <button type="button" role="tab" data-board="event" aria-selected="false" hidden>寮祭の日</button>
+      </div>
       <ol id="ranking" class="ranking"></ol>
       <p id="ranking-empty" class="hint" hidden>まだ だれも いないよ。<br>いちばんのり しよう！</p>
     </div>
   </section>
 
-  <section aria-labelledby="ready-h">
+  <section id="ready-sec" aria-labelledby="ready-h">
     <h2 id="ready-h" class="pill brush">${BRUSH_TEXT.ready}</h2>
     <p class="sub">番号札をお持ちのうえ、受け取り口へお越しください</p>
     <ul id="ready" class="ready-list" aria-live="polite"></ul>
@@ -283,7 +301,7 @@ export const PAGE_HTML = `<!doctype html>
     </div>
   </section>
 
-  <section class="baking" aria-labelledby="baking-h">
+  <section id="baking-sec" class="baking" aria-labelledby="baking-h">
     <h2 id="baking-h" class="brush">${BRUSH_TEXT.baking}<span id="baking-count"></span></h2>
     <ul id="waiting" class="waiting-list"></ul>
     <p id="waiting-empty" class="muted-text" hidden>ただいま焼き待ちはありません</p>
@@ -459,7 +477,18 @@ export const PAGE_HTML = `<!doctype html>
     if (!updatedAt) { el.textContent = "準備中です"; $("stale").hidden = true; return; }
     var sec = Math.max(0, Math.round((Date.now() - updatedAt) / 1000));
     el.textContent = "最終更新：" + (sec < 60 ? sec + "秒前" : Math.floor(sec / 60) + "分前");
-    $("stale").hidden = Date.now() - updatedAt < STALE_MS;
+    $("stale").hidden = closed || Date.now() - updatedAt < STALE_MS;
+  }
+
+  /* 営業終了：番号まわりを隠して、お礼の表示に。ミニゲームとランキングはそのまま */
+  var closed = false;
+  function applyConfig(config) {
+    if (!config) return;
+    closed = !!config.closed;
+    $("closed").hidden = !closed;
+    ["mine", "ready-sec", "baking-sec", "updated"].forEach(function (id) { $(id).hidden = closed; });
+    if (closed) $("stale").hidden = true;
+    if (window.taiyakiGame) window.taiyakiGame.config(config);
   }
 
   function refresh() {
@@ -473,6 +502,7 @@ export const PAGE_HTML = `<!doctype html>
         renderWaiting(waiting, s ? s.avgWaitSeconds : null);
         renderMine(data.lookup);
         renderUpdated();
+        applyConfig(data.config);
       })
       .catch(renderUpdated);
   }

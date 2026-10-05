@@ -1,7 +1,7 @@
 /**
  * お客さん向け呼び出し状況ページ（Cloudflare Workers）。
  * レジPCの public-sync が番号だけを PUT し、お客さんのスマホが GET で読む。
- * ミニゲームの今日のランキングもここに置く
+ * ミニゲームのランキング（きょう・れきだい・寮祭の日）と、営業終了の表示の設定もここに置く
  */
 import { DurableObject } from "cloudflare:workers";
 import { lookupNumber, type PublicStatus } from "../../src/lib/publicStatus";
@@ -11,13 +11,14 @@ import {
   containsNgWord,
   isPlausibleScore,
   jstDateKey,
+  mergeBoards,
   normalizeName,
   playerTag,
   sortRanking,
   upsertBest,
   type RankingEntry,
 } from "../../src/lib/ranking";
-import { publicStatusSchema, rankingSubmitSchema } from "../../src/lib/schemas";
+import { publicStatusSchema, rankingSubmitSchema, siteConfigSchema } from "../../src/lib/schemas";
 import { PAGE_HTML } from "./page";
 
 type Env = {
@@ -28,7 +29,13 @@ type Env = {
 type StoredStatus = PublicStatus & { updatedAt: string };
 
 export type RankingRow = { rank: number; name: string; tag: string; score: number };
-export type SubmitResult = { ok: true; rank: number; top: RankingRow[] } | { ok: false; error: string };
+export type SubmitResult = { ok: true; rank: number; allRank: number; top: RankingRow[] } | { ok: false; error: string };
+export type SiteConfig = { closed: boolean; eventDate: string | null };
+/** today：きょう（日ごと）、all：れきだい（これまでの最高点）、event：寮祭の日（当日の最終結果） */
+export type BoardName = "today" | "all" | "event";
+
+const DAY_PREFIX = "ranking:2"; // ranking:2026-10-04 のような日ごとのキー
+const ALL_KEY = "ranking:all";
 
 function toRows(entries: readonly RankingEntry[]): RankingRow[] {
   return sortRanking(entries).map((e, i) => ({ rank: i + 1, name: e.name, tag: tagOf(e), score: e.score }));
@@ -39,7 +46,7 @@ function tagOf(e: RankingEntry): string {
   return e.player ? playerTag(e.player) : `n${(e as { number?: number }).number ?? ""}`;
 }
 
-/** 最新の呼び出し状況と、今日のランキングを持つ */
+/** 最新の呼び出し状況・ランキング・ページの設定を持つ */
 export class StatusStore extends DurableObject<Env> {
   /** 回線ごとの最近の登録時刻（連続登録を止めるため。消えても困らないのでメモリだけ） */
   private submissions = new Map<string, number[]>();
@@ -52,33 +59,74 @@ export class StatusStore extends DurableObject<Env> {
     await this.ctx.storage.put("status", { ...status, updatedAt: new Date().toISOString() });
   }
 
-  private async board(): Promise<RankingEntry[]> {
-    return (await this.ctx.storage.get<RankingEntry[]>(`ranking:${jstDateKey()}`)) ?? [];
+  async config(): Promise<SiteConfig> {
+    return (await this.ctx.storage.get<SiteConfig>("config")) ?? { closed: false, eventDate: null };
   }
 
-  async ranking(): Promise<RankingRow[]> {
-    return toRows(await this.board()).slice(0, RANKING_SIZE);
+  async setConfig(config: SiteConfig): Promise<void> {
+    await this.ctx.storage.put("config", config);
   }
 
+  private async day(date: string): Promise<RankingEntry[]> {
+    return (await this.ctx.storage.get<RankingEntry[]>(`ranking:${date}`)) ?? [];
+  }
+
+  /** れきだい。まだなければ、これまでの日ごとのランキングから作る（れきだいを入れる前の記録も入るように） */
+  private async allTime(): Promise<RankingEntry[]> {
+    const saved = await this.ctx.storage.get<RankingEntry[]>(ALL_KEY);
+    if (saved) return saved;
+    const days = await this.ctx.storage.list<RankingEntry[]>({ prefix: DAY_PREFIX });
+    const merged = mergeBoards([...days.keys()].sort().map((k) => days.get(k) ?? []));
+    await this.ctx.storage.put(ALL_KEY, merged);
+    return merged;
+  }
+
+  private async entries(board: BoardName | string): Promise<RankingEntry[]> {
+    if (board === "all") return this.allTime();
+    if (board === "event") {
+      const { eventDate } = await this.config();
+      return eventDate ? this.day(eventDate) : [];
+    }
+    return this.day(board === "today" ? jstDateKey() : board);
+  }
+
+  async ranking(board: BoardName): Promise<RankingRow[]> {
+    return toRows(await this.entries(board)).slice(0, RANKING_SIZE);
+  }
+
+  /** スタッフ用：全員分（board のほか、YYYY-MM-DD でその日も見られる） */
+  async rows(board: BoardName | string): Promise<RankingRow[]> {
+    return toRows(await this.entries(board));
+  }
+
+  /** きょう と れきだい の両方に記録する */
   async submit(entry: RankingEntry, ip: string): Promise<SubmitResult> {
     const allowed = allowSubmission(this.submissions.get(ip) ?? [], Date.now());
     this.submissions.set(ip, allowed.times);
     if (!allowed.ok) return { ok: false, error: "すこし じかんを おいてから のせてね" };
-    const board = upsertBest(await this.board(), entry);
-    await this.ctx.storage.put(`ranking:${jstDateKey()}`, board);
-    const rows = toRows(board);
-    return { ok: true, rank: rows.find((r) => r.tag === playerTag(entry.player))!.rank, top: rows.slice(0, RANKING_SIZE) };
+    const today = upsertBest(await this.day(jstDateKey()), entry);
+    const all = upsertBest(await this.allTime(), entry);
+    await this.ctx.storage.put({ [`ranking:${jstDateKey()}`]: today, [ALL_KEY]: all });
+    const rows = toRows(today);
+    const rankOf = (list: RankingRow[]) => list.find((r) => r.tag === playerTag(entry.player))!.rank;
+    return { ok: true, rank: rankOf(rows), allRank: rankOf(toRows(all)), top: rows.slice(0, RANKING_SIZE) };
   }
 
-  async remove(tag: string): Promise<boolean> {
-    const board = await this.board();
-    const next = board.filter((e) => tagOf(e) !== tag);
-    await this.ctx.storage.put(`ranking:${jstDateKey()}`, next);
-    return next.length < board.length;
-  }
-
-  async all(): Promise<RankingRow[]> {
-    return toRows(await this.board());
+  /** 不適切な名前などは、きょう・れきだい・過去の日のどこからでも消す。消した記録の数を返す */
+  async remove(tag: string): Promise<number> {
+    await this.allTime();
+    const boards = await this.ctx.storage.list<RankingEntry[]>({ prefix: "ranking:" });
+    let removed = 0;
+    const updates: Record<string, RankingEntry[]> = {};
+    for (const [key, board] of boards) {
+      const next = board.filter((e) => tagOf(e) !== tag);
+      if (next.length < board.length) {
+        removed += board.length - next.length;
+        updates[key] = next;
+      }
+    }
+    if (removed) await this.ctx.storage.put(updates);
+    return removed;
   }
 }
 
@@ -117,7 +165,7 @@ export default {
         const status = await store.read();
         const n = Number(url.searchParams.get("n"));
         const lookup = status && Number.isInteger(n) && n >= 1 ? lookupNumber(status, n) : null;
-        return json({ status, lookup });
+        return json({ status, lookup, config: await store.config() });
       }
       if (request.method === "PUT") {
         if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
@@ -129,14 +177,29 @@ export default {
       return json({ error: "許可されていないメソッドです" }, 405);
     }
 
+    if (url.pathname === "/api/config") {
+      if (request.method === "GET") return json(await store.config());
+      if (request.method === "PUT") {
+        if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
+        const parsed = siteConfigSchema.safeParse(await readJson(request));
+        if (!parsed.success) return json({ error: "形式が不正です" }, 400);
+        await store.setConfig(parsed.data);
+        return json(parsed.data);
+      }
+      return json({ error: "許可されていないメソッドです" }, 405);
+    }
+
     if (url.pathname === "/api/ranking") {
       if (request.method === "GET") {
-        // スタッフ用（?all=1 は認証つき）：全員分を見る
+        const param = url.searchParams.get("board") ?? "today";
+        // スタッフ用（?all=1 は認証つき）：全員分を見る。board=YYYY-MM-DD でその日も
         if (url.searchParams.has("all")) {
           if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
-          return json({ rows: await store.all() });
+          if (!/^(today|all|event|\d{4}-\d{2}-\d{2})$/.test(param)) return json({ error: "board が不正です" }, 400);
+          return json({ rows: await store.rows(param) });
         }
-        return json({ top: await store.ranking() });
+        const board: BoardName = param === "all" || param === "event" ? param : "today";
+        return json({ board, top: await store.ranking(board) });
       }
       if (request.method === "POST") {
         // お客さん（子どもも）に見せるメッセージなので、ひらがなでやさしく

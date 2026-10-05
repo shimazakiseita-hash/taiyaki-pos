@@ -6,13 +6,14 @@ import {
   containsNgWord,
   isPlausibleScore,
   jstDateKey,
+  mergeBoards,
   normalizeName,
   playerTag,
   sortRanking,
   upsertBest,
   type RankingEntry,
 } from "./ranking";
-import { rankingSubmitSchema } from "./schemas";
+import { rankingSubmitSchema, siteConfigSchema } from "./schemas";
 
 const entry = (player: string, score: number, name = `${player}さん`, at = "2026-10-10T03:00:00.000Z"): RankingEntry => ({
   player,
@@ -106,3 +107,23 @@ describe("allowSubmission", () => {
     expect(r).toEqual({ ok: true, times: [now] });
   });
 });
+
+describe("mergeBoards", () => {
+  it("日ごとのランキングを重ねて、プレイヤーごとの最高点（名前は最後に使ったもの）にする", () => {
+    const day1 = [entry("aaaa1111", 149, "フロマス", "2026-10-04T05:00:00.000Z"), entry("bbbb2222", 30, "たろう", "2026-10-04T06:00:00.000Z")];
+    const day2 = [entry("aaaa1111", 80, "フロマス2", "2026-10-05T05:00:00.000Z"), entry("cccc3333", 60, "はなこ", "2026-10-05T06:00:00.000Z")];
+    const all = mergeBoards([day1, day2]);
+    expect(all).toHaveLength(3);
+    expect(all.find((e) => e.player === "aaaa1111")).toEqual({ player: "aaaa1111", name: "フロマス2", score: 149, at: "2026-10-04T05:00:00.000Z" });
+    expect(sortRanking(all).map((e) => e.score)).toEqual([149, 60, 30]);
+  });
+});
+
+describe("siteConfigSchema", () => {
+  it("営業終了のオン／オフと寮祭の日付（YYYY-MM-DD）", () => {
+    expect(siteConfigSchema.safeParse({ closed: true, eventDate: "2026-10-04" }).success).toBe(true);
+    expect(siteConfigSchema.safeParse({ closed: false, eventDate: null }).success).toBe(true);
+    expect(siteConfigSchema.safeParse({ closed: true, eventDate: "10/4" }).success).toBe(false);
+  });
+});
+

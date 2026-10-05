@@ -74,3 +74,11 @@ export function allowSubmission(times: readonly number[], now: number): { ok: bo
   if (recent.length >= SUBMIT_LIMIT) return { ok: false, times: recent };
   return { ok: true, times: [...recent, now] };
 }
+
+/** 日ごとのランキングを古い順に重ねて、歴代（プレイヤーごとの最高点。名前は最後に使ったもの）を作る */
+export function mergeBoards(boards: readonly (readonly RankingEntry[])[]): RankingEntry[] {
+  return boards.reduce<RankingEntry[]>(
+    (all, board) => [...board].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).reduce(upsertBest, all),
+    [],
+  );
+}

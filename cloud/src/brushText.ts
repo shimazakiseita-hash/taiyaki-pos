@@ -6,4 +6,5 @@ export const BRUSH_TEXT = {
   done: "できあがり！",
   welcome: "いらっしゃいませ！",
   busy: "いっしょうけんめい焼いています！",
+  thanks: "ありがとうございました！",
 };
