@@ -4,7 +4,7 @@
  * 10個よけるごとにステージ（景色と仕掛け）が変わる。速さとすき間の狭さは、よけた数だけで決まり、ステージが一周しても戻らない。
  * アイテム：あんこだん（5秒間あんこを撃ってクラゲを倒せる）・あおいうきわ（1回だけ助かる）。
  * しんかい（クラゲが出る海）からは、クラゲがしびれだまを撃ってくる。
- * あらしのうみを10個よけきると、ボスクラゲが出る（あんこだん撃ち放題で戦う。20秒で倒せないと逃げられる）。
+ * あらしのうみを10個よけきると、ボスクラゲが出る（あんこだん撃ち放題で戦う。35秒で倒せないと逃げられる。残り時間はゲージで見せる）。
  * 自分の番号ができあがったら、ゲームを止めて知らせる（ページから taiyakiGame.ready() が呼ばれる）
  */
 (function () {
@@ -22,7 +22,8 @@
   var BOSS_R = 46;
   var BOSS_HIT_POINTS = 2; // ボスにあんこだんが1発当たるごと
   var BOSS_POINTS = 30; // ボスを倒した
-  var BOSS_SECONDS = 20; // これを過ぎると逃げられる
+  var BOSS_SECONDS = 35; // これを過ぎると逃げられる
+  var BOSS_WARN_SECONDS = 5; // 残りがこれを切ったら「にげそう！」
   var NAME_KEY = "taiyaki-name";
   var BEST_KEY = "taiyaki-best";
   var PLAYER_KEY = "taiyaki-player";
@@ -146,7 +147,8 @@
     if (r < 0.06) return { kind: "gold" };
     // あんこだんはクラゲを倒すためのものなので、クラゲが出る海だけ（出ない海ではふつうの浮き輪に）
     if (r < 0.13) return currentJelly() > 0 ? { kind: "anko" } : { kind: "ring" };
-    if (r < 0.19) return { kind: "shield" };
+    // シールドは1つしか持てないので、持っているあいだは出さない（ふつうの浮き輪に）
+    if (r < 0.19) return shield ? { kind: "ring" } : { kind: "shield" };
     if (r < 0.62) return { kind: "ring" };
     return null;
   }
@@ -462,6 +464,15 @@
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 2;
         ctx.strokeRect(W / 2 - 90, 92, 180, 12);
+        // にげるまでの のこり時間（残り5秒で赤くして「にげそう！」）
+        var left = Math.max(0, BOSS_SECONDS - (t - boss.enteredAt));
+        var warn = left <= BOSS_WARN_SECONDS;
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(W / 2 - 90, 110, 180, 7);
+        ctx.fillStyle = warn ? "#ff5a4a" : "#ffe66b";
+        ctx.fillRect(W / 2 - 90, 110, (180 * left) / BOSS_SECONDS, 7);
+        drawText(String(Math.ceil(left)), W / 2, 142, 22, 1);
+        if (warn && Math.floor(t * 4) % 2 === 0) drawText("にげそう！", W / 2, 168, 22, 1);
       }
     }
   }
@@ -501,7 +512,12 @@
     if (it.kind === "ring") { score += RING_POINTS; popup("+" + RING_POINTS); }
     else if (it.kind === "gold") { score += GOLD_POINTS; popup("+" + GOLD_POINTS); if (navigator.vibrate) navigator.vibrate(30); }
     else if (it.kind === "anko") { gunUntil = nowT + GUN_SECONDS; nextShot = nowT; popup("あんこだん！"); }
-    else if (it.kind === "shield") { shield = true; popup("シールド！"); }
+    else if (it.kind === "shield") {
+      shield = true;
+      popup("シールド！");
+      // 先にもう出ているシールドも、ふつうの浮き輪にする
+      obstacles.forEach(function (o) { if (o.item && !o.item.taken && o.item.kind === "shield") o.item.kind = "ring"; });
+    }
   }
 
   function banner(text, t) { bannerText = text; bannerAt = t; }
