@@ -511,7 +511,8 @@
     it.taken = true;
     if (it.kind === "ring") { score += RING_POINTS; popup("+" + RING_POINTS); }
     else if (it.kind === "gold") { score += GOLD_POINTS; popup("+" + GOLD_POINTS); if (navigator.vibrate) navigator.vibrate(30); }
-    else if (it.kind === "anko") { gunUntil = nowT + GUN_SECONDS; nextShot = nowT; popup("あんこだん！"); }
+    // 長いほうを残す（ボス戦の「うちほうだい」を、取ったあんこだんの5秒で上書きしないように）
+    else if (it.kind === "anko") { gunUntil = Math.max(gunUntil, nowT + GUN_SECONDS); nextShot = nowT; popup("あんこだん！"); }
     else if (it.kind === "shield") {
       shield = true;
       popup("シールド！");
