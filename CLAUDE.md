@@ -35,10 +35,9 @@
 - `npm run backup` — いますぐバックアップ（`backups/` に全注文のCSVとDBのコピー。`BACKUP_DIR` で保存先を変えられる）
 - `npm run public-sync` — お客さん向けページへ呼び出し番号を送り続ける（`.env.public` が必要。`npm run event` に含まれる）
 - `cd cloud && npm run dev` / `npm run deploy` — お客さん向けページのローカル起動 / Cloudflare へ公開
-  - 公開のあと、ランキングを持つ Durable Object がしばらく古いプログラムのまま動くことがある（新しいメソッドを呼ぶと 1101 エラー）。`npm run ranking -- pending` が通るか確かめ、だめならもう一度 `npm run deploy` する
+  - 公開のあと、ランキングを持つ Durable Object がしばらく古いプログラムのまま動くことがある（新しいメソッドを呼ぶと 1101 エラー）。`npm run ranking` が通るか確かめ、だめならもう一度 `npm run deploy` する
 - `cd cloud && npm run assets` — お客さん向けページの画像（WebP）と筆文字フォント（使う文字だけ）を作り直す
 - `npm run ranking`（`-- all`＝れきだい・`-- event`＝寮祭の日）/ `npm run ranking -- remove a1b2c3` — ミニゲームのランキングを見る / 不適切な名前などを消す（一覧に出るIDで指定）
-- `npm run ranking -- pending` / `-- approve a1b2c3` / `-- reject a1b2c3` — 3000点を超えて確認待ちの記録を見る / 載せる / 捨てる
 - `npm run closing -- on 2026-10-04` / `-- off` — お客さん向けページを営業終了の表示にする（ミニゲームとランキングは残る）/ 戻す
 - `npm run tickets -- 1 300` — QRコードつき番号札とポスターの印刷用ページ（`print/tickets.html`）を作る
 

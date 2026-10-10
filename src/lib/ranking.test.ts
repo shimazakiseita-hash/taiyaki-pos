@@ -4,7 +4,6 @@ import {
   SUBMIT_WINDOW_MS,
   allowSubmission,
   containsNgWord,
-  HOLD_SCORE,
   isPlausibleScore,
   jstDateKey,
   maxPlausibleScore,
@@ -64,10 +63,6 @@ describe("maxPlausibleScore / isPlausibleScore", () => {
     expect(isPlausibleScore(20000, 15 * 60_000)).toBe(false);
     expect(isPlausibleScore(1000, 30_000)).toBe(false);
     expect(isPlausibleScore(-1, 30_000)).toBe(false);
-  });
-
-  it("スタッフが確かめる点数は、本物の上位記録より上", () => {
-    expect(HOLD_SCORE).toBeGreaterThan(2519);
   });
 });
 

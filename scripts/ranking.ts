@@ -2,7 +2,6 @@
  * ミニゲームのランキングを見る・消す（スタッフ用。.env.public の URL と合言葉を使う）。
  * 使い方: npm run ranking（きょう） / npm run ranking -- all（れきだい） / npm run ranking -- event（寮祭の日）
  *         npm run ranking -- 2026-10-04（その日） / npm run ranking -- remove a1b2c3（そのIDの記録を、きょう・れきだい・過去の日すべてから消す）
- *         npm run ranking -- pending（3000点を超えて確認待ちの記録） / -- approve a1b2c3（載せる） / -- reject a1b2c3（捨てる）
  */
 type Row = { rank: number; name: string; tag: string; score: number };
 
@@ -24,33 +23,6 @@ async function main() {
     process.exit(1);
   }
   const [command, arg] = process.argv.slice(2);
-
-  if (command === "pending") {
-    const res = await fetch(`${base}/api/ranking?pending=1`, { headers });
-    const body = (await res.json()) as { rows?: (Row & { playSeconds: number; at: string })[]; error?: string };
-    if (!body.rows) {
-      console.error(body.error ?? `取得できませんでした（${res.status}）`);
-      process.exit(1);
-    }
-    console.log("【確認待ち】（遊んだ時間はサーバーが測ったもの）");
-    if (body.rows.length === 0) console.log("確認待ちの記録はありません");
-    for (const r of body.rows) {
-      const when = new Date(r.at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-      console.log(`  ${String(r.score).padStart(5)}点  ${Math.floor(r.playSeconds / 60)}分${r.playSeconds % 60}秒  ID ${r.tag}  ${r.name}  （${when}）`);
-    }
-    return;
-  }
-
-  if (command === "approve" || command === "reject") {
-    if (!arg || !/^[a-z0-9]{1,12}$/.test(arg)) {
-      console.error(`IDを指定してください（例：npm run ranking -- ${command} a1b2c3）`);
-      process.exit(1);
-    }
-    const res = await fetch(`${base}/api/ranking/review?tag=${arg}&action=${command}`, { method: "POST", headers });
-    const body = (await res.json()) as { done?: boolean; error?: string };
-    console.log(body.error ?? (body.done ? `ID ${arg} の記録を${command === "approve" ? "ランキングに載せました" : "捨てました"}` : `ID ${arg} の確認待ちの記録はありません`));
-    return;
-  }
 
   if (command === "remove") {
     if (!arg || !/^[a-z0-9]{1,12}$/.test(arg)) {

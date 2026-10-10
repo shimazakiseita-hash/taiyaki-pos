@@ -851,9 +851,7 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (data.error) { msg.textContent = data.error; send.disabled = false; return; }
-          msg.textContent = data.pending
-            ? "すごい きろく！ スタッフが たしかめてから ランキングに のるよ"
-            : "のせたよ！ きょう " + data.rank + "位 ／ れきだい " + data.allRank + "位";
+          msg.textContent = "のせたよ！ きょう " + data.rank + "位 ／ れきだい " + data.allRank + "位";
           refreshRanking();
         })
         .catch(function () { msg.textContent = "つうしん できなかったよ。もういちど おしてね"; send.disabled = false; });

@@ -9,7 +9,6 @@ import {
   RANKING_SIZE,
   allowSubmission,
   containsNgWord,
-  HOLD_SCORE,
   isPlausibleScore,
   jstDateKey,
   mergeBoards,
@@ -34,10 +33,7 @@ type StoredStatus = PublicStatus & { updatedAt: string };
 export type RankingRow = { rank: number; name: string; tag: string; score: number };
 export type SubmitResult =
   | { ok: true; rank: number; allRank: number; top: RankingRow[] }
-  | { ok: true; pending: true }
   | { ok: false; error: string };
-/** スタッフの確認待ち（HOLD_SCORE を超えた記録） */
-type PendingEntry = RankingEntry & { playSeconds: number };
 export type SiteConfig = { closed: boolean; eventDate: string | null };
 /** today：きょう（日ごと）、all：れきだい（これまでの最高点）、event：寮祭の日（当日の最終結果） */
 export type BoardName = "today" | "all" | "event";
@@ -107,11 +103,8 @@ export class StatusStore extends DurableObject<Env> {
     return toRows(await this.entries(board));
   }
 
-  /**
-   * きょう と れきだい の両方に記録する。合言葉は1回きり（使った番号は期限まで覚えておく）。
-   * HOLD_SCORE を超える記録は、スタッフが確かめるまで「確認待ち」にしておく
-   */
-  async submit(entry: RankingEntry, ip: string, sessionId: string, playSeconds: number): Promise<SubmitResult> {
+  /** きょう と れきだい の両方に記録する。合言葉は1回きり（使った番号は期限まで覚えておく） */
+  async submit(entry: RankingEntry, ip: string, sessionId: string): Promise<SubmitResult> {
     const now = Date.now();
     const allowed = allowSubmission(this.submissions.get(ip) ?? [], now);
     this.submissions.set(ip, allowed.times);
@@ -119,15 +112,6 @@ export class StatusStore extends DurableObject<Env> {
     if (await this.ctx.storage.get(`used:${sessionId}`)) return { ok: false, error: "この かいの きろくは もう のせたよ" };
     await this.ctx.storage.put(`used:${sessionId}`, now + SESSION_TTL_MS);
     await this.pruneUsed(now);
-    if (entry.score > HOLD_SCORE) {
-      const pending = (await this.ctx.storage.get<PendingEntry[]>("pending")) ?? [];
-      await this.ctx.storage.put("pending", [...pending.filter((p) => p.player !== entry.player), { ...entry, playSeconds }]);
-      return { ok: true, pending: true };
-    }
-    return this.record(entry);
-  }
-
-  private async record(entry: RankingEntry): Promise<SubmitResult> {
     const date = jstDateKey(new Date(entry.at));
     const today = upsertBest(await this.day(date), entry);
     const all = upsertBest(await this.allTime(), entry);
@@ -142,22 +126,6 @@ export class StatusStore extends DurableObject<Env> {
     const used = await this.ctx.storage.list<number>({ prefix: "used:", limit: 200 });
     const expired = [...used].filter(([, until]) => until < now).map(([key]) => key);
     if (expired.length) await this.ctx.storage.delete(expired);
-  }
-
-  /** スタッフ用：確認待ちの記録 */
-  async pending(): Promise<(RankingRow & { playSeconds: number; at: string })[]> {
-    const list = (await this.ctx.storage.get<PendingEntry[]>("pending")) ?? [];
-    return list.map((p, i) => ({ rank: i + 1, name: p.name, tag: tagOf(p), score: p.score, playSeconds: p.playSeconds, at: p.at }));
-  }
-
-  /** スタッフ用：確認待ちの記録を、載せる（approve）か捨てる（reject） */
-  async review(tag: string, approve: boolean): Promise<boolean> {
-    const list = (await this.ctx.storage.get<PendingEntry[]>("pending")) ?? [];
-    const target = list.find((p) => tagOf(p) === tag);
-    if (!target) return false;
-    await this.ctx.storage.put("pending", list.filter((p) => p !== target));
-    if (approve) await this.record({ player: target.player, name: target.name, score: target.score, at: target.at });
-    return true;
   }
 
   /** 不適切な名前などは、きょう・れきだい・過去の日のどこからでも消す。消した記録の数を返す */
@@ -244,22 +212,9 @@ export default {
       return json({ session: await createSession(env.SESSION_SECRET, Date.now(), id) });
     }
 
-    // スタッフ用：確認待ちの記録を載せる・捨てる
-    if (url.pathname === "/api/ranking/review" && request.method === "POST") {
-      if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
-      const tag = url.searchParams.get("tag") ?? "";
-      const action = url.searchParams.get("action");
-      if (!/^[a-z0-9]{1,12}$/.test(tag) || (action !== "approve" && action !== "reject")) return json({ error: "tag と action を指定してください" }, 400);
-      return json({ done: await store.review(tag, action === "approve") });
-    }
-
     if (url.pathname === "/api/ranking") {
       if (request.method === "GET") {
         const param = url.searchParams.get("board") ?? "today";
-        if (url.searchParams.has("pending")) {
-          if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
-          return json({ rows: await store.pending() });
-        }
         // スタッフ用（?all=1 は認証つき）：全員分を見る。board=YYYY-MM-DD でその日も
         if (url.searchParams.has("all")) {
           if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
@@ -287,7 +242,7 @@ export default {
         const playMs = now - session.startedAt;
         if (!isPlausibleScore(score, playMs)) return json({ error: "きろくを たしかめられなかったよ" }, 400);
         const ip = request.headers.get("CF-Connecting-IP") ?? "local";
-        const result = await store.submit({ player, name, score, at: new Date(now).toISOString() }, ip, session.id, Math.round(playMs / 1000));
+        const result = await store.submit({ player, name, score, at: new Date(now).toISOString() }, ip, session.id);
         return result.ok ? json(result) : json({ error: result.error }, 400);
       }
       if (request.method === "DELETE") {

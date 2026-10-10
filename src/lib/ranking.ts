@@ -42,9 +42,6 @@ export function containsNgWord(name: string): boolean {
   return NG_WORDS.some((w) => key.includes(w));
 }
 
-/** これより高い点数は、スタッフが確かめてからランキングに載せる */
-export const HOLD_SCORE = 3000;
-
 /**
  * 開始から seconds 秒で取りうる点数の上限。ゲームの仕組み（game.js）どおりに、いちばん狭い間隔（190px）で
  * 一度も沈まず、出てきたものを全部取れたとしたときの期待値を出し、1.5倍＋100点の余裕をもたせる。
