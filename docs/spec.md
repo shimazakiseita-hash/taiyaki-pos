@@ -127,11 +127,14 @@ CREATE TABLE settings (
   - 結果にひとこと（「じこベスト こうしん！」「おしい！ あと ◯てんで じこベスト」「ナイス！」など）。ランキング登録のエラーもひらがなでやさしく
   - 遊んでいる間に自分の番号ができあがったら、ゲームを止めて「できあがり！」を出す。別のアプリに切り替えたらその回は終わり
   - **ランキング**（上位10人。タブで「きょう」＝日本時間の日ごと／「れきだい」＝これまでのプレイヤーごとの最高点／「寮祭の日」＝当日の最終結果）：だれでも（整理券がなくても、どのURLから開いても）名前（1〜10文字）をつけて登録できる。スマホごとに自動で作るID（`localStorage`）で見分け、1台につき最高点1件、名前はいつでも変えられる。表示・削除にはIDの先頭6文字だけを使う（IDそのものは出さないので他人の記録は書き換えられない）
-  - 登録のチェック：不適切な言葉を含む名前は断る（`src/lib/ranking.ts` の一覧。「カスタード」などを巻き込まない語だけ）、遊んだ時間に対してありえない点数（1秒あたり12点＋20点を超える）は断る、同じ回線（`CF-Connecting-IP`）からの登録は10分に20回まで
+  - 登録のチェック：不適切な言葉を含む名前は断る（`src/lib/ranking.ts` の一覧。「カスタード」などを巻き込まない語だけ）、同じ回線（`CF-Connecting-IP`）からの登録は10分に20回まで
+  - **不正対策（その場かぎりの合言葉）**：ゲームを始めるとき（「はじめる！」「もういっかい！」）に `POST /api/play` で、サーバーが「番号.開始時刻.しるし」の合言葉を発行する（しるしは Worker の秘密の鍵 `SESSION_SECRET` で計算した HMAC。`src/lib/session.ts`）。登録には合言葉が必須で、遊んだ時間はサーバーが開始時刻から測る（スマホから時間は受け取らない）。合言葉は1回きり・6時間で期限切れ（待ち時間に開いたままでも切れないように）。もらえなかったら遊んでいるあいだ3秒ごとに頼み直し、それでもだめならその回は登録できない
+  - 点数の上限は、ゲームの仕組みから計算した「開始から◯秒で取りうる最高点」の1.5倍＋100点（`maxPlausibleScore`。2分で約1600点、5分で約4200点）
+  - **3000点を超える記録はスタッフの確認待ち**にして、すぐには載せない（「すごい きろく！ スタッフが たしかめてから ランキングに のるよ」）。スタッフは `npm run ranking -- pending` で見て、`-- approve ID` で載せる・`-- reject ID` で捨てる
   - 登録は「きょう」と「れきだい」の両方に入る（結果に両方の順位を出す）。れきだいは、日ごとのランキングから作る
   - スタッフは `npm run ranking`（`-- all`・`-- event`・`-- 2026-10-04` も）で全員分（IDつき）を見て、`npm run ranking -- remove a1b2c3` で、きょう・れきだい・過去の日すべてから消せる
 - **営業終了の表示**：`npm run closing -- on 寮祭の日付` で、番号まわり（あなたの番号・お呼び出し中・焼いています）を隠してお礼を出す。ミニゲームとランキングはそのまま使え、記録も伸ばせる（さいしょは「れきだい」を表示）。切り替えるとき、寮祭の日とれきだいのランキングを `backups/` にJSONで保存。`-- off` で戻す
-  - API：`GET /api/ranking`（上位10人）、`POST /api/ranking`（`{ player, name, score, playMs }`）、`GET /api/ranking?board=today|all|event`、`GET /api/config`（営業終了・寮祭の日付）。`GET /api/ranking?all=1&board=`・`DELETE /api/ranking?tag=`・`PUT /api/config`（合言葉が必要）
+  - API：`GET /api/ranking`（上位10人）、`POST /api/ranking`（`{ player, name, score, session }`）、`GET /api/ranking?board=today|all|event`、`GET /api/config`（営業終了・寮祭の日付）。`POST /api/play`（その場かぎりの合言葉）。`GET /api/ranking?all=1&board=`・`GET /api/ranking?pending=1`・`POST /api/ranking/review?tag=&action=approve|reject`・`DELETE /api/ranking?tag=`・`PUT /api/config`（スタッフの合言葉が必要）
 
 ### 6.6 置きっぱなしの画面（レジ・キッチン・呼び出し表示）
 - 画面が消えないようにする。http の LAN では Wake Lock API が使えないため nosleep.js（使えれば Wake Lock、なければ無音の動画を流し続ける）を使う

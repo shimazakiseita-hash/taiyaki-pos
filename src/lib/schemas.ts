@@ -41,7 +41,7 @@ export const rankingSubmitSchema = z.object({
   player: z.string().regex(/^[a-z0-9]{8,32}$/), // スマホごとのID
   name: z.string().max(40), // 長さの本当の上限は normalizeName（10文字）で見る
   score: z.number().int().min(0).max(100000),
-  playMs: z.number().int().min(0).max(60 * 60 * 1000),
+  session: z.string().max(200), // ゲーム開始時にサーバーが発行する、その場かぎりの合言葉（遊んだ時間はサーバーが測る）
 });
 
 /** お客さん向けページの設定：営業終了の表示と、寮祭当日（ランキングの「寮祭の日」）の日付 */

@@ -42,12 +42,38 @@ export function containsNgWord(name: string): boolean {
   return NG_WORDS.some((w) => key.includes(w));
 }
 
+/** これより高い点数は、スタッフが確かめてからランキングに載せる */
+export const HOLD_SCORE = 3000;
+
 /**
- * 遊んだ時間に対してありえない点数を弾く。最高速で障害物が1秒に約1.5個、
- * 金の浮き輪10点・クラゲ5点も見込んで、1秒12点＋20点が上限（余裕をもたせている）
+ * 開始から seconds 秒で取りうる点数の上限。ゲームの仕組み（game.js）どおりに、いちばん狭い間隔（190px）で
+ * 一度も沈まず、出てきたものを全部取れたとしたときの期待値を出し、1.5倍＋100点の余裕をもたせる。
+ * 速さ＝min(340, 150＋2.4×よけた数)、1つよけるごとに 1点＋浮き輪3点×0.43＋金10点×0.06＋（クラゲの海なら）5点×0.55、
+ * 40個ごとのボスは 体力×2＋30点（体力＝8＋周回×4、0.32秒に1発）
  */
+export function maxPlausibleScore(seconds: number): number {
+  let t = 0;
+  let passed = 0;
+  let score = 0;
+  for (;;) {
+    t += 190 / Math.min(340, 150 + 2.4 * passed);
+    if (t > seconds) break;
+    passed++;
+    const stage = Math.floor(passed / 10);
+    const jellySea = stage >= 4 || stage % 4 >= 2;
+    score += 1 + 0.43 * 3 + 0.06 * 10 + (jellySea ? 0.55 * 5 : 0);
+    if (passed % 40 === 0) {
+      const hp = 8 + (passed / 40 - 1) * 4;
+      score += hp * 2 + 30;
+      t += hp * 0.32;
+    }
+  }
+  return Math.round(score * 1.5 + 100);
+}
+
+/** 遊んだ時間（サーバーが測ったもの）に対してありえない点数を弾く */
 export function isPlausibleScore(score: number, playMs: number): boolean {
-  return score >= 0 && playMs >= 0 && score <= Math.ceil((playMs / 1000) * 12) + 20;
+  return score >= 0 && playMs >= 0 && score <= maxPlausibleScore(playMs / 1000);
 }
 
 /** プレイヤーごとに1件。点数が上がったときだけ記録を更新し、名前はいつでも最新にする */

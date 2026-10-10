@@ -47,7 +47,7 @@
 
   var W = 0, H = 0, FLOOR = 0;
   var state = "closed"; // closed | title | ready（タップ待ち）| playing | over | done
-  var player, obstacles, jellies, bubbles, fishes, popups, score, passed, startedAt, lastTime;
+  var player, obstacles, jellies, bubbles, fishes, popups, score, passed, lastTime;
   var stageIndex, stageShownAt, blend, flashUntil;
   var bullets, bolts, shield, safeUntil, gunUntil, nextShot, nowT;
   var boss, bannerText, bannerAt;
@@ -67,6 +67,7 @@
   var myTag = myPlayer.slice(0, 6);
   var board = "today"; // ランキングのタブ：today（きょう）・all（れきだい）・event（寮祭の日）
   var configured = false;
+  var run = null; // いまの回：{ session } ＝ サーバーが発行した「その場かぎりの合言葉」（ランキングに載せるのに必要）
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -715,7 +716,6 @@
     if (state === "ready") {
       // 最初のタップで泳ぎ出す（説明を読み終えてから、自分のタイミングで始められる）
       state = "playing";
-      startedAt = Date.now();
       stageShownAt = performance.now() / 1000;
     }
     if (state === "playing") player.vy = FLAP;
@@ -772,15 +772,27 @@
     ]);
   }
 
+  /* 合言葉をもらう。電波が悪くて失敗したら、遊んでいるあいだ3秒ごとにもう一度たのむ */
+  function requestSession(r) {
+    function retry() {
+      if (run === r && !r.session && (state === "ready" || state === "playing")) setTimeout(function () { requestSession(r); }, 3000);
+    }
+    fetch("/api/play", { method: "POST" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (d) { if (d && d.session) r.session = d.session; else retry(); })
+      .catch(retry);
+  }
+
   function start() {
     reset();
     panel.hidden = true;
     state = "ready";
+    run = { session: null };
+    requestSession(run);
   }
 
   function finish(reason) {
     state = "over";
-    var playMs = Date.now() - startedAt;
     var previousBest = parseInt(recall(BEST_KEY) || "0", 10) || 0;
     var best = Math.max(score, previousBest);
     store(BEST_KEY, String(best));
@@ -793,7 +805,7 @@
       el("p", "game-text small", "ステージ" + (stageIndex + 1) + "（" + stageLabel() + "）まで いったよ"),
       el("p", "game-text small", "じこベスト " + best + "点"),
     ];
-    if (score > 0) items.push(rankForm(score, playMs));
+    if (score > 0) items.push(rankForm(score, run));
     items.push(button("もういっかい！", "primary wide", start), button("とじる", "link", close));
     showPanel(items);
   }
@@ -807,7 +819,7 @@
     return "ドンマイ！ もういっかい いってみよう";
   }
 
-  function rankForm(s, playMs) {
+  function rankForm(s, r) {
     var form = el("form", "rank-form");
     var label = el("label", "", "ランキングに のせる");
     label.htmlFor = "rank-name";
@@ -825,17 +837,23 @@
     form.addEventListener("click", function (ev) { ev.stopPropagation(); });
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
+      if (!r || !r.session) {
+        msg.textContent = "つうしん できなかったので、この かいは ランキングに のせられないよ";
+        return;
+      }
       send.disabled = true;
       store(NAME_KEY, input.value);
       fetch("/api/ranking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player: myPlayer, name: input.value, score: s, playMs: playMs }),
+        body: JSON.stringify({ player: myPlayer, name: input.value, score: s, session: r.session }),
       })
         .then(function (res) { return res.json(); })
         .then(function (data) {
           if (data.error) { msg.textContent = data.error; send.disabled = false; return; }
-          msg.textContent = "のせたよ！ きょう " + data.rank + "位 ／ れきだい " + data.allRank + "位";
+          msg.textContent = data.pending
+            ? "すごい きろく！ スタッフが たしかめてから ランキングに のるよ"
+            : "のせたよ！ きょう " + data.rank + "位 ／ れきだい " + data.allRank + "位";
           refreshRanking();
         })
         .catch(function () { msg.textContent = "つうしん できなかったよ。もういちど おしてね"; send.disabled = false; });
