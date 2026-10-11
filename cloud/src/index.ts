@@ -112,6 +112,18 @@ export class StatusStore extends DurableObject<Env> {
     if (await this.ctx.storage.get(`used:${sessionId}`)) return { ok: false, error: "この かいの きろくは もう のせたよ" };
     await this.ctx.storage.put(`used:${sessionId}`, now + SESSION_TTL_MS);
     await this.pruneUsed(now);
+    return this.record(entry);
+  }
+
+  /** スタッフ用：記録を手で載せる（古いページで遊んで登録できなかった人など）。tag を渡すと、そのIDの人の記録にする */
+  async add(name: string, score: number, tag: string | null): Promise<SubmitResult> {
+    const found = tag ? (await this.allTime()).find((e) => e.player && tagOf(e) === tag) : undefined;
+    if (tag && !found) return { ok: false, error: `ID ${tag} の人が見つかりません` };
+    const player = found?.player ?? [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return this.record({ player, name, score, at: new Date().toISOString() });
+  }
+
+  private async record(entry: RankingEntry): Promise<SubmitResult> {
     const date = jstDateKey(new Date(entry.at));
     const today = upsertBest(await this.day(date), entry);
     const all = upsertBest(await this.allTime(), entry);
@@ -210,6 +222,18 @@ export default {
       if (!env.SESSION_SECRET) return json({ error: "準備中です" }, 503);
       const id = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
       return json({ session: await createSession(env.SESSION_SECRET, Date.now(), id) });
+    }
+
+    // スタッフ用：記録を手で載せる
+    if (url.pathname === "/api/ranking/add" && request.method === "POST") {
+      if (!authorized(request, env.PUSH_TOKEN)) return json({ error: "認証に失敗しました" }, 401);
+      const body = (await readJson(request)) as { name?: unknown; score?: unknown; tag?: unknown } | undefined;
+      const name = typeof body?.name === "string" ? normalizeName(body.name) : null;
+      const score = body?.score;
+      const tag = typeof body?.tag === "string" && /^[a-z0-9]{1,12}$/.test(body.tag) ? body.tag : null;
+      if (!name || typeof score !== "number" || !Number.isInteger(score) || score < 0 || score > 100000) return json({ error: "名前（1〜10文字）と点数を指定してください" }, 400);
+      const result = await store.add(name, score, tag);
+      return result.ok ? json(result) : json({ error: result.error }, 400);
     }
 
     if (url.pathname === "/api/ranking") {

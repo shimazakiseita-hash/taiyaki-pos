@@ -38,6 +38,7 @@
   - 公開のあと、ランキングを持つ Durable Object がしばらく古いプログラムのまま動くことがある（新しいメソッドを呼ぶと 1101 エラー）。`npm run ranking` が通るか確かめ、だめならもう一度 `npm run deploy` する
 - `cd cloud && npm run assets` — お客さん向けページの画像（WebP）と筆文字フォント（使う文字だけ）を作り直す
 - `npm run ranking`（`-- all`＝れきだい・`-- event`＝寮祭の日）/ `npm run ranking -- remove a1b2c3` — ミニゲームのランキングを見る / 不適切な名前などを消す（一覧に出るIDで指定）
+- `npm run ranking -- add 名前 4520 [a1b2c3]` — 記録を手で載せる（古いページで遊んで登録できなかった人など。IDを付けるとその人の記録にする）
 - `npm run closing -- on 2026-10-04` / `-- off` — お客さん向けページを営業終了の表示にする（ミニゲームとランキングは残る）/ 戻す
 - `npm run tickets -- 1 300` — QRコードつき番号札とポスターの印刷用ページ（`print/tickets.html`）を作る
 

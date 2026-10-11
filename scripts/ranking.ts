@@ -2,6 +2,7 @@
  * ミニゲームのランキングを見る・消す（スタッフ用。.env.public の URL と合言葉を使う）。
  * 使い方: npm run ranking（きょう） / npm run ranking -- all（れきだい） / npm run ranking -- event（寮祭の日）
  *         npm run ranking -- 2026-10-04（その日） / npm run ranking -- remove a1b2c3（そのIDの記録を、きょう・れきだい・過去の日すべてから消す）
+ *         npm run ranking -- add 名前 4520 [a1b2c3]（記録を手で載せる。IDを付けると、その人の記録にする）
  */
 type Row = { rank: number; name: string; tag: string; score: number };
 
@@ -22,7 +23,23 @@ async function main() {
     console.error(".env.public に PUBLIC_STATUS_URL と PUBLIC_STATUS_TOKEN を設定してください");
     process.exit(1);
   }
-  const [command, arg] = process.argv.slice(2);
+  const [command, arg, ...rest] = process.argv.slice(2);
+
+  if (command === "add") {
+    const [score, tag] = rest;
+    if (!arg || !/^\d+$/.test(score ?? "")) {
+      console.error("名前と点数を指定してください（例：npm run ranking -- add たいやき 4520 a1b2c3。IDはなくてもよい）");
+      process.exit(1);
+    }
+    const res = await fetch(`${base}/api/ranking/add`, {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: arg, score: Number(score), tag }),
+    });
+    const body = (await res.json()) as { rank?: number; allRank?: number; error?: string };
+    console.log(body.error ?? `${arg} さんの ${score}点 を載せました（きょう ${body.rank}位 ／ れきだい ${body.allRank}位）`);
+    return;
+  }
 
   if (command === "remove") {
     if (!arg || !/^[a-z0-9]{1,12}$/.test(arg)) {
